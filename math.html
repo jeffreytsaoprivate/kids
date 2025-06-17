@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Challenge Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-image: linear-gradient(to bottom right, #60a5fa, #9333ea); /* bg-gradient-to-br from-blue-400 to-purple-600 */
+            min-height: 100vh; /* min-h-screen */
+            display: flex; /* flex */
+            align-items: center; /* items-center */
+            justify-content: center; /* justify-center */
+            padding: 1rem; /* p-4 */
+        }
+        .container {
+            background-color: white; /* bg-white */
+            padding: 2rem; /* p-8 */
+            border-radius: 1.5rem; /* rounded-3xl */
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* shadow-2xl */
+            display: flex; /* flex */
+            flex-direction: column; /* flex-col */
+            align-items: center; /* items-center */
+            max-width: 32rem; /* max-w-lg */
+            width: 100%; /* w-full */
+        }
+        .problem-display {
+            font-size: 3.75rem; /* text-6xl */
+            line-height: 1; /* text-6xl for sm:text-7xl */
+            font-weight: 800; /* font-extrabold */
+            color: #1e40af; /* text-blue-800 */
+            margin-bottom: 2rem; /* mb-8 */
+            letter-spacing: 0.025em; /* tracking-wide */
+            text-align: center; /* text-center */
+            filter: drop-shadow(0 10px 8px rgb(0 0 0 / 0.04)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1)); /* drop-shadow-md */
+        }
+        @media (min-width: 640px) { /* sm breakpoint */
+            .problem-display {
+                font-size: 4.375rem; /* sm:text-7xl */
+            }
+        }
+
+        .input-field {
+            font-size: 36px; /* text-5xl */
+            line-height: 1; /* leading-none */
+            width: 100%; /* w-full */
+            font-weight: 400; /* font-normal */
+            color: #1e40af; /* text-blue-800 */
+            margin-left: auto; /* mx-auto */
+            margin-right: auto; /* mx-auto */
+            letter-spacing: 0.05em; /* tracking-wider */
+            text-align: center; /* text-center */
+            filter: drop-shadow(0 4px 3px rgb(0 0 0 / 0.07)) drop-shadow(0 2px 2px rgb(0 0 0 / 0.06)); /* drop-shadow */
+            border-width: 2px; /* border-2 */
+            border-color: #60a5fa; /* border-blue-400 */
+            outline: none; /* outline-none */
+            transition-property: all; /* transition-all */
+            transition-duration: 200ms; /* duration-200 */
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); /* ease-in-out */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 0.75rem; /* p-3 */
+            margin-bottom: 1.5rem; /* mb-6 */
+        }
+        .input-field:focus {
+            border-color: #2563eb; /* focus:border-blue-600 */
+            box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5); /* focus:ring-2 focus:ring-blue-200 (approximated) */
+        }
+        .input-field::-webkit-outer-spin-button,
+        .input-field::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .btn {
+            padding-left: 2rem; /* px-8 */
+            padding-right: 2rem; /* px-8 */
+            padding-top: 1rem; /* py-4 */
+            padding-bottom: 1rem; /* py-4 */
+            border-radius: 0.75rem; /* rounded-xl */
+            font-weight: 700; /* font-bold */
+            color: white; /* text-white */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+            transition-property: all; /* transition-all */
+            transition-duration: 300ms; /* duration-300 */
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); /* ease-in-out */
+            transform: scale(1); /* initial transform for hover:scale-105 */
+        }
+        .btn:hover {
+            transform: scale(1.05) translateY(-0.25rem); /* hover:scale-105 hover:-translate-y-1 */
+        }
+        .btn-green {
+            background-image: linear-gradient(to right, #4ade80, #16a34a); /* from-green-400 to-green-600 */
+        }
+        .btn-green:hover {
+            background-image: linear-gradient(to right, #22c55e, #15803d); /* hover:from-green-500 hover:to-green-700 */
+        }
+        .btn-blue {
+            background-image: linear-gradient(to right, #3b82f6, #2563eb); /* from-blue-500 to-blue-700 */
+        }
+        .btn-blue:hover {
+            background-image: linear-gradient(to right, #2563eb, #1d4ed8); /* hover:from-blue-600 hover:to-blue-800 */
+        }
+        .message-box {
+            min-height: 30px; /* min-h-[30px] */
+            font-size: 1.875rem; /* text-3xl */
+            font-weight: 600; /* font-semibold */
+            text-align: center; /* text-center */
+            margin-bottom: 1rem; /* mb-4 */
+        }
+        .message-success {
+            color: #047857; /* text-green-700 */
+        }
+        .message-error {
+            color: #b91c1c; /* text-red-700 */
+        }
+        .score-display {
+            position: absolute; /* absolute */
+            top: 1rem; /* top-4 */
+            right: 1rem; /* right-4 */
+            background-color: #fcd34d; /* bg-yellow-300 */
+            color: #b45309; /* text-yellow-800 */
+            padding-left: 1.5rem; /* px-6 */
+            padding-right: 1.5rem; /* px-6 */
+            padding-top: 0.75rem; /* py-3 */
+            padding-bottom: 0.75rem; /* py-3 */
+            border-radius: 9999px; /* rounded-full */
+            font-weight: 700; /* font-bold */
+            font-size: 1.5rem; /* text-2xl */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+        }
+        /* Keypad Styles */
+        .keypad-grid {
+            display: grid; /* grid */
+            grid-template-columns: repeat(3, minmax(0, 1fr)); /* grid-cols-3 */
+            gap: 1rem; /* gap-4 */
+            width: 100%; /* w-full */
+            max-width: 28rem; /* max-w-md */
+            margin-top: 1rem; /* mt-4 */
+        }
+        .keypad-btn {
+            padding: 1rem; /* p-4 */
+            border-radius: 0.75rem; /* rounded-xl */
+            font-size: 1.875rem; /* text-3xl */
+            font-weight: 700; /* font-bold */
+            background-color: #e5e7eb; /* bg-gray-200 */
+            color: #1f2937; /* text-gray-800 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+            cursor: pointer; /* cursor-pointer */
+            transition-property: all; /* transition-all */
+            transition-duration: 150ms; /* duration-150 */
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); /* ease-in-out */
+            display: flex; /* flex */
+            align-items: center; /* items-center */
+            justify-content: center; /* justify-center */
+            min-width: 60px; /* min-w-[60px] */
+            min-height: 60px; /* min-h-[60px] */
+        }
+        .keypad-btn:hover {
+            background-color: #d1d5db; /* hover:bg-gray-300 */
+        }
+        .keypad-btn:active {
+            background-color: #9ca3af; /* active:bg-gray-400 */
+        }
+        .keypad-btn-action {
+            background-color: #f87171; /* bg-red-400 */
+            color: white; /* text-white */
+        }
+        .keypad-btn-action:hover {
+            background-color: #ef4444; /* hover:bg-red-500 */
+        }
+        .button-grid {
+            display: grid; /* grid */
+            grid-template-columns: repeat(2, minmax(0, 1fr)); /* grid-cols-3 */
+            gap: 1rem; /* gap-4 */
+            width: 100%; /* w-full */
+            max-width: 50rem; /* max-w-md */
+            margin-top: 1rem; /* mt-4 */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="score-display" id="score-display">Score: 0</div>
+
+        <div class="button-grid">
+        <div id="problem-display" class="problem-display"></div>
+        <input type="number" class="input-field" id="answer-input" placeholder="Your Answer" readonly>
+        </div>
+        <div id="message-box" class="message-box">&nbsp;</div>
+        
+        <div class="keypad-grid" id="keypad">
+            <button class="keypad-btn" data-value="1">1</button>
+            <button class="keypad-btn" data-value="2">2</button>
+            <button class="keypad-btn" data-value="3">3</button>
+            <button class="keypad-btn" data-value="4">4</button>
+            <button class="keypad-btn" data-value="5">5</button>
+            <button class="keypad-btn" data-value="6">6</button>
+            <button class="keypad-btn" data-value="7">7</button>
+            <button class="keypad-btn" data-value="8">8</button>
+            <button class="keypad-btn" data-value="9">9</button>
+            <button class="keypad-btn keypad-btn-action" data-value="clear">Clear</button>
+            <button class="keypad-btn" data-value="0">0</button>
+            <button class="keypad-btn keypad-btn-action" data-value="backspace">⌫</button>
+        </div>
+        
+        <div class="button-grid">
+            <button id="check-btn" class="btn btn-green">Check Answer</button>
+            <button id="new-problem-btn" class="btn btn-blue">Show Answer</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const problemDisplay = document.getElementById('problem-display');
+        const answerInput = document.getElementById('answer-input');
+        const checkBtn = document.getElementById('check-btn');
+        const newProblemBtn = document.getElementById('new-problem-btn');
+        const messageBox = document.getElementById('message-box');
+        const scoreDisplay = document.getElementById('score-display');
+        const keypad = document.getElementById('keypad');
+
+        // Game State Variables
+        let currentProblem = {}; // Stores {num1, num2, operator, answer}
+        let score = 0;
+
+        // --- Helper Functions ---
+
+        /**
+         * Generates a random integer within a specified range.
+         * @param {number} min The minimum value (inclusive).
+         * @param {number} max The maximum value (inclusive).
+         * @returns {number} A random integer.
+         */
+        function getRandomInt(min, max) {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        /**
+         * Displays a message to the user.
+         * @param {string} message The message to display.
+         * @param {string} type 'success' or 'error' to determine styling.
+         * @param {number} seconds The duration in seconds to display the message.
+         */
+        function showMessage(message, type, seconds) {
+            messageBox.textContent = message;
+            messageBox.className = 'message-box ' + (type === 'success' ? 'message-success' : 'message-error');
+            setTimeout(() => {
+                messageBox.innerHTML = '&nbsp;';
+                messageBox.className = 'message-box';
+            }, seconds * 1000);
+        }
+
+        /**
+         * Updates the score displayed on the screen.
+         */
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `Score: ${score}`;
+        }
+
+        // --- Game Logic ---
+
+        /**
+         * Generates a new math problem (addition, subtraction, multiplication, or division).
+         */
+        function generateProblem() {
+            const operations = ['+', '-', 'x', '/'];
+            const operator = operations[(Math.random() * operations.length) | 0];
+            let num1, num2, answer;
+
+            switch (operator) {
+                case '+':
+                    num1 = getRandomInt(0, 10);
+                    num2 = getRandomInt(0, 10);
+                    answer = num1 + num2;
+                    break;
+                case '-':
+                    num2 = getRandomInt(0, 10);
+                    answer = getRandomInt(0, 10);
+                    num1 = num2 + answer;
+                    break;
+                case 'x':
+                    num1 = getRandomInt(0, 10);
+                    num2 = getRandomInt(0, 10);
+                    answer = num1 * num2;
+                    break;
+                case '/':
+                    let divisor = getRandomInt(1, 10);
+                    let result = getRandomInt(0, 10);
+                    num1 = divisor * result;
+                    num2 = divisor;
+                    answer = result;
+                    break;
+            }
+
+            currentProblem = { num1, num2, operator, answer };
+            problemDisplay.textContent = `${num1} ${operator} ${num2} = ?`;
+            answerInput.value = '';
+            showMessage('', '', 0); // Clear any previous messages immediately
+        }
+
+        /**
+         * Checks the user's answer against the correct solution.
+         */
+        function checkAnswer() {
+            const userAnswer = parseInt(answerInput.value);
+
+            if (isNaN(userAnswer)) {
+                showMessage("Please enter a number!", "error", 2);
+                return;
+            }
+
+            if (userAnswer === currentProblem.answer) {
+                showMessage("Correct! 🎉", "success", 2);
+                score++;
+                updateScoreDisplay();
+                setTimeout(generateProblem, 1000);
+            } else {
+                showMessage(`Oops! Try again.`, "error", 5);
+            }
+        }
+
+        /**
+         * Reveals the correct answer and generates a new problem.
+         */
+        function showCorrectAnswerAndNewProblem() {
+            const userAnswer = parseInt(answerInput.value);
+
+            if (userAnswer === currentProblem.answer) {
+                showMessage("Correct! 🎉", "success", 2);
+                score++;
+                updateScoreDisplay();
+                setTimeout(generateProblem, 1000);
+            } else {
+                showMessage(`The correct answer was ${currentProblem.answer}.`, "error", 5);
+                if (!isNaN(userAnswer)) score = Math.max(0, score - 1);
+                updateScoreDisplay();
+                setTimeout(generateProblem, 1000);
+            }
+        }
+
+        // --- Keypad Logic ---
+        keypad.addEventListener('click', (event) => {
+            const target = event.target;
+            if (target.classList.contains('keypad-btn')) {
+                const value = target.dataset.value;
+
+                if (value === 'clear') {
+                    answerInput.value = '';
+                } else if (value === 'backspace') {
+                    answerInput.value = answerInput.value.slice(0, -1);
+                } else {
+                    if (answerInput.value.length < 10) { // Limit input length
+                        answerInput.value += value;
+                    }
+                }
+            }
+        });
+
+        // --- Event Listeners ---
+        checkBtn.addEventListener('click', checkAnswer);
+        newProblemBtn.addEventListener('click', showCorrectAnswerAndNewProblem);
+
+        // Initial game setup
+        window.onload = function() {
+            updateScoreDisplay();
+            generateProblem();
+        };
+    </script>
+</body>
+</html>
