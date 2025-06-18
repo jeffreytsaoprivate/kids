@@ -1,0 +1,213 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PFC</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .input-container {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .input-container label {
+            width: 50px;
+            margin-right: 10px;
+        }
+        .input-container input {
+            flex: 1;
+            padding: 5px;
+        }
+        .protein {background-color: #AA0000;}
+        .fat     {background-color: #D2A000;}
+        .carbs   {background-color: #00BCFF;}
+        button {
+            padding: 10px 20px;
+            background-color: #A0A0A0;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>PFC</h1>
+    <div class="input-container">
+        <label for="fat"><B>Fat</B><BR>(g)</label>
+        <SPAN class="protein">&nbsp;</SPAN>
+        <input type="number" id="fat" value="0" min="0">
+    </div>
+    <div class="input-container">
+        <label for="carbs"><B>Carbs</B><BR>(g)</label>
+        <SPAN class="carbs">&nbsp;</SPAN>
+        <input type="number" id="carbs" value="0" min="0">
+    </div>
+    <div class="input-container">
+        &nbsp;&nbsp;&nbsp;
+	<label for="fiber"><B>Fiber</B><BR>(g)</label>
+        <SPAN class="carbs">&nbsp;</SPAN>
+        <input type="number" id="fiber" value="0" min="0">
+    </div>
+    <div class="input-container">
+        <label for="protein"><B>Protein</B><BR>(g)</label>
+        <SPAN class="fat">&nbsp;</SPAN>
+        <input type="number" id="protein" value="0" min="0">
+    </div>
+    <button id="toggleButton">Show Net Carbs</button>
+    <canvas id="piechart" height=300></canvas>
+    <script>
+        const fatInput = document.getElementById('fat');
+        const carbsInput = document.getElementById('carbs');
+        const fiberInput = document.getElementById('fiber');
+        const proteinInput = document.getElementById('protein');
+        const piechartCanvas = document.getElementById('piechart');
+        const toggleButton = document.getElementById('toggleButton');
+
+        let isNetCarbs = false;
+
+        function calculateMacros() {
+            var fat = parseFloat(fatInput.value);
+            var carbs = parseFloat(carbsInput.value);
+            var fiber = parseFloat(fiberInput.value);
+            var protein = parseFloat(proteinInput.value);
+            if (isNaN(fat)) fat=0.0;
+            if (isNaN(carbs)) carbs=0.0;
+            if (isNaN(fiber)) fiber=0.0;
+            if (fiber>carbs) fiber=carbs;
+            if (isNaN(protein)) protein=0.0;
+            fatInput.value = fat;
+            carbsInput.value = carbs;
+            fiberInput.value = fiber;
+            proteinInput.value = protein;
+
+            const totalCalories = (fat * 9) + ((isNetCarbs) ? carbs - fiber : carbs) *  4 + (protein * 4);
+            const fatPercent = ((totalCalories==0) ? 0.0 : (fat * 9 / totalCalories) * 100);
+            const carbsPercent = ((totalCalories==0) ? 0.0 : ((isNetCarbs) ? carbs - fiber : carbs) * 4 / totalCalories * 100);
+            const proteinPercent = ((totalCalories==0) ? 0.0 : (protein * 4 / totalCalories) * 100);
+
+            return { fatPercent, carbsPercent, proteinPercent };
+        }
+
+        function drawPieChart(data,labels,colors) {
+            const ctx = piechartCanvas.getContext('2d');
+            const proteinPercent = data[0];
+            const fatPercent = data[1];
+            const carbsPercent = data[2];
+            ctx.clearRect(0, 0, piechartCanvas.width, piechartCanvas.height);
+            var startAngle = -Math.PI/2;
+            for (let i = 0; i < data.length; i++) {
+                var pieSlice = data[i];
+                if (fatPercent==0 && carbsPercent==0 && proteinPercent==0) pieSlice = 33.333333333;
+                var arcangle = Math.PI * 2 * (pieSlice / 100);
+                var midAngle = startAngle + arcangle / 2;
+                var r = Math.min(piechartCanvas.height,piechartCanvas.width) / 2;
+                var y = piechartCanvas.height / 2;
+                var x = piechartCanvas.width / 2;
+                ctx.beginPath();
+                ctx.moveTo(x + Math.cos(startAngle) * r*0.5 , y + Math.sin(startAngle) * r*0.5);
+                ctx.lineTo(x + Math.cos(startAngle) * r*1.0 , y + Math.sin(startAngle) * r*1.0);
+                ctx.arc(x, y, r, startAngle, startAngle + arcangle);
+                ctx.lineTo(x + Math.cos(startAngle+arcangle) * r*0.5 , y + Math.sin(startAngle+arcangle) * r*0.5);
+                ctx.arc(x, y, r*0.5, startAngle + arcangle, startAngle, true);
+                ctx.fillStyle = colors[i];
+                ctx.fill();
+                startAngle += Math.PI * 2 * (pieSlice / 100);
+            }
+
+
+            startAngle = -Math.PI/2;
+            for (let i = 0; i < data.length; i++) {
+                var pieSlice = data[i];
+                if (fatPercent==0 && carbsPercent==0 && proteinPercent==0) pieSlice = 33.333333333;
+
+                var arcangle = Math.PI * 2 * (pieSlice / 100);
+                var midAngle = startAngle + arcangle / 2;
+                var r = Math.min(piechartCanvas.height,piechartCanvas.width) / 2;
+                var y = piechartCanvas.height / 2;
+                var x = piechartCanvas.width / 2;
+                if (arcangle>0) {
+                    var text = data[i].toFixed(1) + '%\n' + labels[i];
+                            var textMetrics = ctx.measureText(text);
+                            var lineHeight = 15;
+                            ctx.beginPath();
+                    ctx.font = lineHeight + 'px arial';
+                            ctx.fillStyle ='white';
+                            ctx.textAlign = "center";
+                            ctx.textBaseline = "middle";
+                    var tx = x + Math.cos(midAngle) * r*0.8;
+                    var ty = y + Math.sin(midAngle) * r*0.8;
+                    var lines = text.split('\n');
+                    for (var j = 0; j<lines.length; j++) {
+                        ctx.fillText(lines[j], tx, ty+(j-(lines.length-1)/2)*lineHeight );
+                    }
+                }
+                startAngle += Math.PI * 2 * (pieSlice / 100);
+            }
+
+            // Draw inner circle
+            if (fatPercent!=0 || carbsPercent!=0 || proteinPercent!=0) {
+                var centerY = piechartCanvas.height / 2;
+                var centerX = piechartCanvas.width / 2;
+                var innerRadius = Math.min(piechartCanvas.height,piechartCanvas.width) / 2 * 0.5;
+                var lineHeight = 20;
+                if (carbsPercent > 35) {
+                    innerCircleColor = '#FFCCCC';
+                    innerCircleText = `${carbsPercent.toFixed(1)}%\nOutside\nguideline`;
+                } else if (carbsPercent > 25) {
+                    innerCircleColor = '#FFFFCC';
+                    innerCircleText = `${carbsPercent.toFixed(1)}%\nWithin 10%\nof guideline`;
+                } else {
+                    innerCircleColor = '#CCFFCC';
+                    innerCircleText = `${carbsPercent.toFixed(1)}%\nWithin\nguideline`;
+                }
+                
+                ctx.beginPath();
+                ctx.font = 'bold ' + lineHeight + 'px arial';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, innerRadius, 0, Math.PI * 2);
+                ctx.fillStyle = innerCircleColor;
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Display percentage in the inner circle
+                ctx.fillStyle = '#000';
+                ctx.font = lineHeight + 'px arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';                
+                drawMultiLineText(ctx, innerCircleText, centerX, centerY, lineHeight);
+            }  
+        }
+        function updateChart() {
+            const macrosData = calculateMacros();
+            drawPieChart([macrosData.proteinPercent,macrosData.fatPercent, macrosData.carbsPercent],["Proteins","Fat",(isNetCarbs ? "Net carbs" : "Carbs")],["#AA0000","#D2A000","#00BCFF"]);
+        }
+        function drawMultiLineText(ctx, text, x, y, lineHeight) {
+            const lines = text.split('\n'); // Split by newline character
+            for (let i = 0; i < lines.length; i++) {
+                ctx.fillText(lines[i], x, y + ((i-(lines.length-1)/2) * lineHeight));
+            }
+        }
+        updateChart(); // Call initially to draw the chart
+
+        fatInput.addEventListener('change', updateChart);
+        carbsInput.addEventListener('change', updateChart);
+        fiberInput.addEventListener('change', updateChart);
+        proteinInput.addEventListener('change', updateChart);
+
+        toggleButton.addEventListener('click', function() {
+            isNetCarbs = !isNetCarbs;
+            this.innerText = (isNetCarbs) ? 'Show Total Carbs' : 'Show Net Carbs';
+            updateChart();
+        });
+    </script>
+</body>
+</html>
