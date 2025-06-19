@@ -12,7 +12,7 @@
     align-items: center;
     min-height: 100vh;
     font-family: sans-serif;
-    overflow: hidden; /* Prevent scrollbars if clock slightly exceeds viewport */
+    /* overflow: hidden; /* Prevent scrollbars if clock slightly exceeds viewport */
   }
 
   #controls {
@@ -189,7 +189,7 @@ function updateClockToCurrentTime() {
         const radius = clockContainer.offsetWidth / 2; // Get dynamic radius
         if (iter==0) {
             classname = 'number';
-            numberradius = radius * 0.8;
+            numberradius = radius * 0.78;
             numbermultiplier = 1;
         } else {
             classname = 'smallnumber';
