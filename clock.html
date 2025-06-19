@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Clock</title>
+<style>
+  body {
+    margin: 0;
+    background-color: #f0f0f0;
+    display: flex;
+    flex-direction: column; /* Arrange content in a column */
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: sans-serif;
+    overflow: hidden; /* Prevent scrollbars if clock slightly exceeds viewport */
+  }
+
+  #controls {
+    margin-top: 50px; /* Space between controls and clock */
+    display: flex;
+    gap: 10px; /* Space between input and button */
+  }
+
+  #time-input {
+    padding: 8px;
+    font-size: 4rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+
+  #draw-clock {
+    padding: 8px 15px;
+    font-size: 2rem;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  #draw-clock:hover {
+    background-color: #0056b3;
+  }
+
+  #clock-container {
+    position: relative;
+    width: 90vw; /* Use viewport width for responsiveness */
+    height: 90vw; /* Make it a circle */
+    max-width: 600px; /* Limit size on very large screens */
+    max-height: 600px;
+    border: 6px solid #333;
+    border-radius: 50%;
+    background-color: white;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    /* No need for display:flex here, as numbers are absolutely positioned */
+  }
+
+  .number {
+    position: absolute;
+    font-size: 48px; /* clamp(30px, 4vw, 48px); /* Minimum 24px, preferred 4vw, maximum 48px */
+    font-weight: bold;
+    text-align: center;
+    color: #333;
+    /* Positioned with JS */
+  }
+  .smallnumber {
+    position: absolute;
+    font-size: 20px; /* clamp(30px, 4vw, 48px); /* Minimum 24px, preferred 4vw, maximum 48px */
+    font-weight: normal;
+    text-align: center;
+    color: #666;
+  }
+
+  .hour-hand, .minute-hand, .second-hand {
+    position: absolute;
+    top: 50%; /* Set the pivot point to the vertical center */
+    left: 50%; /* Set the pivot point to the horizontal center */
+    transform-origin: bottom center; /* Pivot from the base of the hand */
+    border-radius: 6px; /* Rounded edges for hands */
+    z-index: 2; /* Ensure hands are above the clock face but below center pin */
+  }
+
+  .hour-hand {
+    width: 4%;
+    height: 25%;
+    /* Adjust top offset to position the hand correctly from the pivot */
+    margin-top: -25%; /* Move hand up by its full height from the 50% top */
+    margin-left: -2%; /* Move hand left by half its width from the 50% left */
+    background-color: #333;
+  }
+
+  .minute-hand {
+    width: 3%;
+    height: 35%;
+    margin-top: -35%;
+    margin-left: -1.5%;
+    background-color: #666;
+  }
+
+  .second-hand {
+    width: 1.5%;
+    height: 50%;
+    margin-top: -50%;
+    margin-left: -0.75%;
+    background-color: #e44d26; /* A nice red */
+  }
+
+  .center-circle {
+    position: absolute;
+    width: 2%;
+    height: 2%;
+    background-color: #333;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Center the circle itself */
+    z-index: 3; /* Ensure it's on top of the hands */
+  }
+
+  #debug {
+    display: none; /* Hide the input, button, and debug div */
+  }
+</style>
+</head>
+<body>
+
+<div id="clock-container">
+  <div class="hour-hand" id="hour-hand"></div>
+  <div class="minute-hand" id="minute-hand"></div>
+  <div class="second-hand" id="second-hand"></div>
+  <div class="center-circle"></div>
+</div>
+<div id="controls">
+  <input type="time" id="time-input">
+  <button id="draw-clock">Draw Clock</button>
+</div>
+<div id="debug"></div>
+
+<script>
+  const clockContainer = document.getElementById('clock-container');
+  const hourHand = document.getElementById('hour-hand');
+  const minuteHand = document.getElementById('minute-hand');
+  const secondHand = document.getElementById('second-hand');
+  const timeInput = document.getElementById('time-input');
+  const drawClockButton = document.getElementById('draw-clock');
+  let intervalId; // To store the ID of the setInterval, so we can clear it
+
+function updateClockToCurrentTime() {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    setClockHands(hours, minutes, seconds);
+  }
+  
+  function setClockHands(hours, minutes, origseconds) {
+    const seconds = (origseconds===null ? 0:origseconds);
+    const hourRotation = (hours % 12 + minutes / 60 + seconds / 3600) * 30;
+    const minuteRotation = (minutes + seconds / 60) * 6;
+    const secondRotation = seconds * 6;
+
+    hourHand.style.transform = `rotate(${hourRotation}deg)`;
+    minuteHand.style.transform = `rotate(${minuteRotation}deg)`;
+    secondHand.style.transform = `rotate(${secondRotation}deg)`;
+    secondHand.style.display = ( origseconds===null  ? 'none' : 'inline');
+  }
+
+  
+  function updateClock() {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+
+    const hourRotation = (hours % 12 + minutes / 60 + seconds / 3600) * 30; // Smooth hour hand movement
+    const minuteRotation = (minutes + seconds / 60) * 6;
+    const secondRotation = seconds * 6;
+
+    // We no longer need the translate(-50%, -100%) in JS because margin offsets
+    // and top/left 50% correctly position the pivot point.
+    hourHand.style.transform = `rotate(${hourRotation}deg)`;
+    minuteHand.style.transform = `rotate(${minuteRotation}deg)`;
+    secondHand.style.transform = `rotate(${secondRotation}deg)`;
+  }
+
+  function createClockNumbers() {
+    for(let iter=0; iter<2; iter++) {
+        const radius = clockContainer.offsetWidth / 2; // Get dynamic radius
+        if (iter==0) {
+            classname = 'number';
+            numberradius = radius * 0.8;
+            numbermultiplier = 1;
+        } else {
+            classname = 'smallnumber';
+            numberradius = radius * 0.9;
+            numbermultiplier = 5;
+        }
+        // Clear existing numbers if any
+        const existingNumbers = clockContainer.querySelectorAll(`.${classname}`);
+        existingNumbers.forEach(num => num.remove());
+
+        // Adjust numberOffset to control how far numbers are from the edge
+        const numberOffset = numberradius; // Slightly closer to the center
+
+        for (let i = 1; i <= 12; i++) {
+            const numberDiv = document.createElement('div');
+            numberDiv.classList.add(classname);
+            numberDiv.textContent = (i*numbermultiplier) % 60;
+
+            // Angle in degrees, starting from 12 o'clock (0 degrees) and going clockwise
+            // Subtract 90 to start from the top (as Math.cos/sin typically start from right)
+            const angle = (i * 30) - 90;
+            const radians = angle * Math.PI / 180; // Convert to radians
+
+            // Calculate position relative to the center of the clock container
+            const centerX = radius;
+            const centerY = radius;
+
+            const x = centerX + numberOffset * Math.cos(radians);
+            const y = centerY + numberOffset * Math.sin(radians);
+
+            // Position the number div itself
+            numberDiv.style.left = `${x}px`;
+            numberDiv.style.top = `${y}px`;
+            numberDiv.style.transform = `translate(-50%, -50%)`; // Center the div on its calculated point
+
+            clockContainer.appendChild(numberDiv);
+        }
+
+    }
+  }
+ // Handle "Draw Clock" button click
+  drawClockButton.addEventListener('click', () => {
+    clearInterval(intervalId); // Stop the real-time update
+    const inputTime = timeInput.value;
+    if (inputTime) {
+      const [hours, minutes] = inputTime.split(':').map(Number);
+      setClockHands(hours, minutes, null); // Set seconds to 0 for manual input
+    }
+  });
+  // Set the default value of the time input to the current time
+  const now = new Date();
+  timeInput.value = now.toTimeString().slice(0, 5); // Format to HH:MM
+
+  // Initial setup for numbers and clock
+  createClockNumbers();
+  updateClock();
+
+  // Start the real-time update interval
+  intervalId = setInterval(updateClockToCurrentTime, 1000);
+
+  // Update numbers and clock when window is resized to handle responsiveness
+  window.addEventListener('resize', () => {
+    createClockNumbers();
+    updateClock();
+  });
+ 
+
+</script>
+
+</body>
+</html>
