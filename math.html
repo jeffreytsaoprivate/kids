@@ -16,6 +16,10 @@
             justify-content: center;
             padding: 1rem;
             position: relative; /* Added for absolute positioning of difficulty/score */
+            transition: background-image 0.5s ease-in-out; /* Smooth transition for background */
+        }
+        body.challenge-day-bg {
+            background-image: linear-gradient(to bottom right, #facc15, #ef4444); /* Exciting challenge colors */
         }
         .container {
             background-color: white;
@@ -44,7 +48,6 @@
                 font-size: 4.375rem;
             }
         }
-
         .input-field {
             font-size: 36px;
             line-height: 1;
@@ -76,7 +79,6 @@
             -webkit-appearance: none;
             margin: 0;
         }
-
         .btn {
             padding-left: 2rem;
             padding-right: 2rem;
@@ -150,7 +152,6 @@
             padding-right: 1rem;
             padding-top: 0rem;
             padding-bottom: 0rem;
-            
             border-radius: 0.75rem;
             font-size: 1.875rem;
             font-weight: 700;
@@ -188,7 +189,6 @@
             max-width: 28rem;
             margin-top: 1rem;
         }
-
         /* Difficulty Toggle Styles */
         .difficulty-toggle {
             position: absolute;
@@ -218,6 +218,29 @@
         .difficulty-option:not(.selected):hover {
             background-color: #d1d5db; /* hover:bg-gray-300 */
         }
+
+        /* Challenge Day Sticker */
+        .challenge-sticker {
+            position: absolute;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%) rotate(-5deg);
+            background-color: #facc15; /* yellow-400 */
+            color: #b45309; /* amber-700 */
+            padding: 0.5rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 800;
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            z-index: 20;
+            animation: bounce 0.8s infinite alternate;
+        }
+
+        @keyframes bounce {
+            from { transform: translateX(-50%) rotate(-5deg) translateY(0); }
+            to { transform: translateX(-50%) rotate(-5deg) translateY(-5px); }
+        }
     </style>
 </head>
 <body>
@@ -228,6 +251,7 @@
     </div>
 
     <div class="score-display" id="score-display">Score: 0</div>
+    <div id="challenge-sticker" class="challenge-sticker hidden">Challenge Day!</div>
 
     <div class="container">
         <div id="problem-display" class="problem-display"></div>
@@ -247,7 +271,6 @@
             <button class="keypad-btn" data-value="0">0</button>
             <button class="keypad-btn keypad-btn-action" data-value="backspace">⌫</button>
         </div>
-        
         <div class="button-grid">
             <button id="check-btn" class="btn btn-green">Check Answer</button>
             <button id="new-problem-btn" class="btn btn-blue">Show Answer</button>
@@ -264,28 +287,43 @@
         const scoreDisplay = document.getElementById('score-display');
         const keypad = document.getElementById('keypad');
         const difficultyToggle = document.getElementById('difficulty-toggle');
+        const challengeSticker = document.getElementById('challenge-sticker');
+        const body = document.body;
 
         // Game State Variables
         let currentProblem = {}; // Stores {num1, num2, operator, answer}
         let score = 0;
         let difficulty = 'easy'; // Default difficulty
 
-        // --- Helper Functions ---
+        // Challenge Day Variables
+        const CHALLENGE_INTERVAL_DAYS = 3; // Every 3 days, it's a challenge day
+        let isChallengeDay = false;
+        let originalScore = 0; // To store score before challenge day
+        let challengeHighScore = 0; // High score achieved on the current challenge day
 
+        // --- Helper Functions ---
         /**
-         * Saves the current score and difficulty to localStorage.
+         * Saves the current score and difficulty to localStorage, and challenge day data.
          */
         function saveGameState() {
             localStorage.setItem('mathChallengeScore', score);
             localStorage.setItem('mathChallengeDifficulty', difficulty);
+            localStorage.setItem('lastChallengeDate', new Date().toDateString()); // Save current date as last challenge date
+            localStorage.setItem('isChallengeDay', isChallengeDay);
+            localStorage.setItem('originalScore', originalScore);
+            localStorage.setItem('challengeHighScore', challengeHighScore);
         }
 
         /**
-         * Loads the score and difficulty from localStorage.
+         * Loads the score and difficulty from localStorage, and challenge day data.
          */
         function loadGameState() {
             const savedScore = localStorage.getItem('mathChallengeScore');
             const savedDifficulty = localStorage.getItem('mathChallengeDifficulty');
+            const lastChallengeDate = localStorage.getItem('lastChallengeDate');
+            const savedIsChallengeDay = localStorage.getItem('isChallengeDay');
+            const savedOriginalScore = localStorage.getItem('originalScore');
+            const savedChallengeHighScore = localStorage.getItem('challengeHighScore');
 
             if (savedScore !== null) {
                 score = parseInt(savedScore);
@@ -293,8 +331,84 @@
             if (savedDifficulty !== null) {
                 difficulty = savedDifficulty;
             }
+            if (savedIsChallengeDay === 'true') {
+                isChallengeDay = true;
+            }
+            if (savedOriginalScore !== null) {
+                originalScore = parseInt(savedOriginalScore);
+            }
+            if (savedChallengeHighScore !== null) {
+                challengeHighScore = parseInt(savedChallengeHighScore);
+            }
+
+            // Check if it's a new day and update challenge day status
+            checkChallengeDay(lastChallengeDate);
+
             updateScoreDisplay();
             updateDifficultyToggle();
+        }
+
+        /**
+         * Checks if it's a challenge day and updates game state accordingly.
+         * @param {string} lastChallengeDateStr The string representation of the last challenge date from localStorage.
+         */
+        function checkChallengeDay(lastChallengeDateStr) {
+            const today = new Date();
+            const todayDateStr = today.toDateString();
+            let lastChallengeDate = lastChallengeDateStr ? new Date(lastChallengeDateStr) : null;
+
+            if (isChallengeDay) {
+                // If it's still the same challenge day, keep the state
+                if (todayDateStr === lastChallengeDateStr) {
+                    applyChallengeDayStyling();
+                    return;
+                } else {
+                    // Challenge day is over, restore original score and reset challenge state
+                    score = originalScore;
+                    isChallengeDay = false;
+                    originalScore = 0;
+                    //challengeHighScore = 0; // Reset challenge high score for the new non-challenge day
+                    removeChallengeDayStyling();
+                    saveGameState(); // Save the restored score and non-challenge state
+                }
+            }
+
+            // Calculate days since last challenge or game start
+            let daysSinceLastChallenge = 0;
+            if (lastChallengeDate) {
+                const diffTime = Math.abs(today.getTime() - lastChallengeDate.getTime());
+                daysSinceLastChallenge = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            } else {
+                // If no last challenge date, consider it day 0 to potentially start a challenge
+                daysSinceLastChallenge = CHALLENGE_INTERVAL_DAYS; // Make it trigger on first run if no date
+            }
+
+            if (daysSinceLastChallenge >= CHALLENGE_INTERVAL_DAYS) {
+                // It's time for a new challenge day!
+                isChallengeDay = true;
+                originalScore = score; // Store current score
+                score = 0; // Reset score for the challenge
+                //challengeHighScore = 0; // Reset challenge high score for the new challenge
+                applyChallengeDayStyling();
+                saveGameState(); // Save new challenge state
+                showMessage("It's CHALLENGE DAY! Score for high score!", "success", 3);
+            }
+        }
+
+        /**
+         * Applies special styling for challenge day.
+         */
+        function applyChallengeDayStyling() {
+            body.classList.add('challenge-day-bg');
+            challengeSticker.classList.remove('hidden');
+        }
+
+        /**
+         * Removes special styling after challenge day.
+         */
+        function removeChallengeDayStyling() {
+            body.classList.remove('challenge-day-bg');
+            challengeSticker.classList.add('hidden');
         }
 
         /**
@@ -328,7 +442,11 @@
          * Updates the score displayed on the screen.
          */
         function updateScoreDisplay() {
-            scoreDisplay.textContent = `Score: ${score}`;
+            let displayScore = `Score: ${score}`;
+            if (isChallengeDay) {
+                displayScore += ` (High Score: ${challengeHighScore})`;
+            }
+            scoreDisplay.textContent = displayScore;
         }
 
         /**
@@ -345,7 +463,6 @@
         }
 
         // --- Game Logic ---
-
         /**
          * Generates a new math problem based on the current difficulty.
          */
@@ -353,15 +470,12 @@
             let operations = ['+', '-'];
             let num1, num2, answer;
             let minVal1, maxVal1, minVal2, maxVal2, minDivisor, maxDivisor, minResult, maxResult;
-            let hasMultiplication, hasDivision;
 
             // Define ranges based on difficulty
             switch (difficulty) {
                 case 'easy':
                     minVal1 = minVal2 = 0;
                     maxVal1 = maxVal2 = 10;
-                    hasMultiplication = false;
-                    hasDivision = false;                   
                     minDivisor = 1; maxDivisor = 10;
                     minResult = 0; maxResult = 10;
                     break;
@@ -369,6 +483,8 @@
                     minVal1 = minVal2 = 0;
                     maxVal1 = maxVal2 = 10;
                     operations.push('x');
+                    minDivisor = 1; maxDivisor = 10;
+                    minResult = 0; maxResult = 10;
                     break;
                 case 'hard':
                     minVal1 = minVal2 = 0;
@@ -426,6 +542,9 @@
             if (userAnswer === currentProblem.answer) {
                 showMessage("Correct! 🎉", "success", 2);
                 score++;
+                if (isChallengeDay) {
+                    challengeHighScore = Math.max(challengeHighScore, score); // Update challenge high score
+                }
                 updateScoreDisplay();
                 saveGameState(); // Save score after each correct answer
                 setTimeout(generateProblem, 1000);
@@ -443,12 +562,17 @@
             if (userAnswer === currentProblem.answer) {
                 showMessage("Correct! 🎉", "success", 2);
                 score++;
+                if (isChallengeDay) {
+                    challengeHighScore = Math.max(challengeHighScore, score); // Update challenge high score
+                }
                 updateScoreDisplay();
                 saveGameState();
                 setTimeout(generateProblem, 1000);
             } else {
                 showMessage(`The correct answer was ${currentProblem.answer}.`, "error", 5);
-                if (!isNaN(userAnswer)) score = Math.max(0, score - 1); // Deduct point if incorrect
+                if (!isNaN(userAnswer) && !isChallengeDay) { // Deduct point if incorrect, but not on challenge day
+                    score = Math.max(0, score - 1);
+                }
                 updateScoreDisplay();
                 saveGameState();
                 setTimeout(generateProblem, 1000);
@@ -484,14 +608,13 @@
             }
         });
 
-
         // --- Event Listeners ---
         checkBtn.addEventListener('click', checkAnswer);
         newProblemBtn.addEventListener('click', showCorrectAnswerAndNewProblem);
 
         // Initial game setup
         window.onload = function() {
-            loadGameState(); // Load score and difficulty on startup
+            loadGameState(); // Load score and difficulty on startup, also checks for challenge day
             generateProblem();
         };
     </script>
