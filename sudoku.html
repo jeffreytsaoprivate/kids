@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudoku</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles for the body and container */
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Apply gradient background, center content, and add padding */
+            background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
+            --tw-gradient-stops: #a78bfa, #818cf8; /* from-purple-400 to-indigo-600 */
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem; /* p-4 */
+        }
+        .container {
+            /* Styling for the main game container */
+            background-color: #fff; /* bg-white */
+            padding: 2rem; /* p-8 */
+            border-radius: 1rem; /* rounded-2xl */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-xl */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 32rem; /* max-w-lg */
+            width: 100%;
+        }
+
+        /* Grid container for the Sudoku board */
+        .grid-container {
+            /* Use CSS Grid for layout, 4 columns, no gap between cells */
+            /* Apply a strong outer border and rounded corners */
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr)); /* grid-cols-4 */
+            gap: 0; /* gap-0 */
+            border-width: 4px; /* border-2 */
+            border-color: #4338ca; /* border-indigo-700 */
+            border-radius: 0.5rem; /* rounded-lg */
+            overflow: hidden;
+            position: relative; /* Needed for animation overlay */
+        }
+
+        /* Individual grid cell styling */
+        .grid-cell {
+            /* Fixed width and height, center content, default thin border */
+            /* Responsive sizing: w-16/h-16 for small screens, w-20/h-20 for medium/large */
+            margin: 1px; 
+            width: 4rem; /* w-16 */
+            height: 4rem; /* h-16 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: 700; /* font-bold */
+            border-width: 0px; /* border */
+            border-color: #d1d5db; /* border-gray-300 */
+            background-color: #f7fafc; /* light background for user input cells */
+        }
+        @media (min-width: 640px) { /* sm: breakpoint */
+            .grid-cell {
+                width: 5rem; /* sm:w-20 */
+                height: 5rem; /* sm:h-20 */
+            }
+        }
+
+
+        /* Input field inside each grid cell */
+        .grid-cell input {
+            /* Make input fill the cell, center text, remove outline, add focus ring */
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            font-size: 1.875rem; /* text-3xl */
+            font-weight: 700; /* font-bold */
+            background-color: transparent;
+            outline: none;
+            border-radius: 0.375rem; /* rounded-md */
+        }
+        .grid-cell input:focus {
+            box-shadow: 0 0 0 2px #6366f1; /* focus:ring-2 focus:ring-indigo-400 */
+        }
+        /* Hide default number input spin buttons */
+        .grid-cell input::-webkit-outer-spin-button,
+        .grid-cell input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .grid-cell input {
+            -moz-appearance: textfield; /* Firefox */
+        }
+
+        /* Highlight for the currently selected cell */
+        .selected-cell {
+            box-shadow: 0 0 0 3px #6366f1; /* Stronger ring for selected cell */
+            z-index: 1; /* Ensure it's on top of other borders */
+        }
+
+        /* Styles for initial, fixed numbers in the puzzle */
+        .initial-cell {
+            background-color: #e0e7ff; /* bg-indigo-100 */
+            color: #3730a3; /* text-indigo-800 */
+            cursor: not-allowed;
+        }
+
+        /* Styles for incorrect user entries */
+        .incorrect-cell {
+            background-color: #fecaca; /* bg-red-200 */
+            color: #b91c1c; /* text-red-700 */
+        }
+
+        /* Styles for correct user entries */
+        .correct-cell {
+            background-color: #dcfce7; /* bg-green-200 */
+            color: #16a34a; /* text-green-700 */
+        }
+
+        /* Button group styling */
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem; /* gap-4 */
+            margin-top: 2rem; /* mt-8 */
+        }
+        /* Base button styles */
+        .btn {
+            padding-left: 1.5rem; /* px-6 */
+            padding-right: 1.5rem; /* px-6 */
+            padding-top: 0.75rem; /* py-3 */
+            padding-bottom: 0.75rem; /* py-3 */
+            border-radius: 0.75rem; /* rounded-xl */
+            font-weight: 600; /* font-semibold */
+            color: #fff; /* text-white */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-lg */
+            transition-property: all; /* transition-all */
+            transition-duration: 300ms; /* duration-300 */
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); /* ease-in-out */
+            transform: scale(1); /* initial transform */
+        }
+        .btn:hover {
+            transform: scale(1.05); /* hover:scale-105 */
+        }
+        /* Primary button color */
+        .btn-primary {
+            background-color: #4f46e5; /* bg-indigo-600 */
+        }
+        .btn-primary:hover {
+            background-color: #4338ca; /* hover:bg-indigo-700 */
+        }
+        .btn-primary:focus {
+            outline: none;
+            box-shadow: 0 0 0 4px #a5b4fc; /* focus:ring-4 focus:ring-indigo-300 */
+        }
+        /* Secondary button color */
+        .btn-secondary {
+            background-color: #9333ea; /* bg-purple-600 */
+        }
+        .btn-secondary:hover {
+            background-color: #7e22ce; /* hover:bg-purple-700 */
+        }
+        .btn-secondary:focus {
+            outline: none;
+            box-shadow: 0 0 0 4px #d8b4fe; /* focus:ring-4 focus:ring-purple-300 */
+        }
+
+        /* Number input buttons */
+        .number-input-group {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem; /* gap-3 */
+            margin-top: 1.5rem; /* mt-6 */
+            margin-bottom: 1rem;
+        }
+        .num-btn {
+            width: 3.5rem; /* w-14 */
+            height: 3.5rem; /* h-14 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #e0e7ff; /* bg-indigo-100 */
+            color: #3730a3; /* text-indigo-800 */
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: 700; /* font-bold */
+            border-radius: 0.5rem; /* rounded-lg */
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+        }
+        .num-btn:hover {
+            background-color: #c7d2fe; /* hover:bg-indigo-200 */
+            transform: translateY(-2px);
+        }
+        .num-btn:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        .num-btn.clear-btn {
+            width: 5rem; /* w-14 */
+            background-color: #fca5a5; /* bg-red-300 */
+            color: #991b1b; /* text-red-800 */
+        }
+        .num-btn.clear-btn:hover {
+            background-color: #f87171; /* hover:bg-red-400 */
+        }
+
+
+        /* Message box styling for feedback to the user */
+        .message-box {
+            margin: 0.15rem; /* mt-6 */
+            padding-left: 1rem; /* p-4 */
+            padding-right: 1rem; /* p-4 */
+            padding-top: 0.25rem; /* p-4 */
+            padding-bottom: 0.20rem; /* p-4 */
+            border-radius: 0.75rem; /* rounded-xl */
+            text-align: center;
+            font-size: 1.125rem; /* text-lg */
+            font-weight: 500; /* font-medium */
+            min-height: 40px; /* Ensure space for messages */
+        }
+        /* Success message styling */
+        .message-success {
+            background-color: #dcfce7; /* bg-green-100 */
+            color: #16a34a; /* text-green-800 */
+        }
+        /* Error message styling */
+        .message-error {
+            background-color: #fee2e2; /* bg-red-100 */
+            color: #b91c1c; /* text-red-800 */
+        }
+
+        /* Timer and Best Time display */
+        .timer-display {
+            /*margin-top: 1rem;*/
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 600; /* font-semibold */
+            color: #4338ca; /* indigo-700 */
+            text-align: center;
+            width: 100%;
+        }
+
+        /* Animation for solving the grid */
+        @keyframes sweep-green {
+            0% {
+                transform: scaleX(0);
+                transform-origin: left;
+            }
+            100% {
+                transform: scaleX(1);
+                transform-origin: left;
+            }
+        }
+        .grid-container.solved-animation::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(16, 185, 129, 0.7); /* emerald-500 with transparency */
+            animation: sweep-green 1s ease-out forwards;
+            z-index: 10;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="timer-display" class="timer-display">Time: 00:00</div>
+        <div id="best-time-display" class="timer-display">Best Time: --:--</div>
+        <div id="message-box" class="message-box"></div>
+        <div id="game-board" class="grid-container">
+            <!-- Sudoku cells will be injected here by JavaScript -->
+        </div>
+
+        <div id="number-input-buttons" class="number-input-group">
+            <!-- Number input buttons will be injected here -->
+        </div>
+
+        <div class="button-group">
+            <button id="new-game-btn" class="btn btn-primary">New Game</button>
+            <button id="check-btn" class="btn btn-secondary">Check Solution</button>
+            <button id="solve-btn" class="btn btn-secondary">Solve Puzzle</button>
+        </div>
+    </div>
+
+    <script>
+        const BOARD_SIZE = 4;
+        const SUBGRID_SIZE = 2; // For a 4x4, subgrids are 2x2
+        const gameBoardElement = document.getElementById('game-board');
+        const newGameBtn = document.getElementById('new-game-btn');
+        const checkBtn = document.getElementById('check-btn');
+        const solveBtn = document.getElementById('solve-btn');
+        const messageBox = document.getElementById('message-box');
+        const timerDisplay = document.getElementById('timer-display');
+        const bestTimeDisplay = document.getElementById('best-time-display');
+        const numberInputButtons = document.getElementById('number-input-buttons');
+
+        let puzzleBoard = []; // The board with initial given numbers (0 for empty)
+        let solvedBoard = []; // The fully solved board
+        let userBoard = [];   // The current state of the board with user input
+
+        let timerInterval;
+        let startTime;
+        let elapsedTime = 0; // In milliseconds
+        let selectedCellInput = null; // To keep track of the currently focused input element
+
+        const BEST_TIME_KEY = 'sudokuBestTime4x4';
+
+        // --- Helper Functions ---
+
+        /**
+         * Shuffles an array in place using Fisher-Yates algorithm.
+         * @param {Array} array The array to shuffle.
+         */
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        /**
+         * Checks if a number can be placed in a given cell without violating Sudoku rules.
+         * @param {Array<Array<number>>} board The current board state.
+         * @param {number} row The row index.
+         * @param {number} col The column index.
+         * @param {number} num The number to check.
+         * @returns {boolean} True if the number is valid, false otherwise.
+         */
+        function isValid(board, row, col, num) {
+            // Check row
+            for (let x = 0; x < BOARD_SIZE; x++) {
+                if (board[row][x] === num) {
+                    return false;
+                }
+            }
+
+            // Check column
+            for (let x = 0; x < BOARD_SIZE; x++) {
+                if (board[x][col] === num) {
+                    return false;
+                }
+            }
+
+            // Check 2x2 subgrid
+            const startRow = row - (row % SUBGRID_SIZE);
+            const startCol = col - (col % SUBGRID_SIZE);
+            for (let i = 0; i < SUBGRID_SIZE; i++) {
+                for (let j = 0; j < SUBGRID_SIZE; j++) {
+                    if (board[i + startRow][j + startCol] === num) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        /**
+         * Solves the Sudoku board using a backtracking algorithm.
+         * @param {Array<Array<number>>} board The board to solve.
+         * @returns {boolean} True if a solution is found, false otherwise.
+         */
+        function solveSudoku(board) {
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    if (board[row][col] === 0) { // If cell is empty
+                        const numbers = [1, 2, 3, 4];
+                        shuffleArray(numbers); // Shuffling for different puzzles on generation
+
+                        for (let num of numbers) {
+                            if (isValid(board, row, col, num)) {
+                                board[row][col] = num;
+
+                                if (solveSudoku(board)) {
+                                    return true;
+                                }
+
+                                board[row][col] = 0; // Backtrack
+                            }
+                        }
+                        return false; // No valid number found for this cell
+                    }
+                }
+            }
+            return true; // Board is solved
+        }
+
+        /**
+         * Creates a deep copy of a 2D array.
+         * @param {Array<Array<number>>} board The board to copy.
+         * @returns {Array<Array<number>>} A new 2D array that is a copy.
+         */
+        function deepCopyBoard(board) {
+            return board.map(row => [...row]);
+        }
+
+        /**
+         * Displays a message to the user.
+         * @param {string} message The message to display.
+         * @param {string} type 'success' or 'error' to determine styling.
+         */
+        function showMessage(message, type) {
+            messageBox.textContent = message;
+            messageBox.className = 'message-box' + (type === 'success' ? ' message-success' : type === 'error' ? ' message-error' : '');
+            // Clear message after a few seconds
+            setTimeout(() => {
+                messageBox.textContent = '';
+                messageBox.className = 'message-box';
+            }, (type === 'success' ? 6000: 3000));
+        }
+
+        /**
+         * Checks if the user board is completely filled (no zeros).
+         * @returns {boolean} True if no empty cells, false otherwise.
+         */
+        function isBoardFull() {
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (userBoard[r][c] === 0) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // --- Timer Functions ---
+
+        /**
+         * Formats milliseconds into a MM:SS string.
+         * @param {number} ms Time in milliseconds.
+         * @returns {string} Formatted time string.
+         */
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        /**
+         * Starts the game timer.
+         */
+        function startTimer() {
+            clearInterval(timerInterval); // Clear any existing timer
+            startTime = Date.now();
+            updateTimerDisplay(); // Initial display
+            timerInterval = setInterval(updateTimerDisplay, 1000);
+        }
+
+        /**
+         * Stops the game timer and calculates elapsed time.
+         */
+        function stopTimer() {
+            clearInterval(timerInterval);
+            elapsedTime = Date.now() - startTime;
+        }
+
+        /**
+         * Updates the timer display HTML element.
+         */
+        function updateTimerDisplay() {
+            const currentElapsedTime = Date.now() - startTime;
+            timerDisplay.textContent = `Time: ${formatTime(currentElapsedTime)}`;
+        }
+
+        /**
+         * Loads the best time from local storage and displays it.
+         */
+        function loadBestTime() {
+            const savedBestTime = localStorage.getItem(BEST_TIME_KEY);
+            if (savedBestTime) {
+                bestTimeDisplay.textContent = `Best Time: ${formatTime(parseInt(savedBestTime))}`;
+            } else {
+                bestTimeDisplay.textContent = `Best Time: --:--`;
+            }
+        }
+
+        /**
+         * Saves the current solved time as the new best time if it's better.
+         */
+        function saveBestTime() {
+            const currentBestTime = parseInt(localStorage.getItem(BEST_TIME_KEY) || Infinity);
+            if (elapsedTime < currentBestTime || isNaN(currentBestTime)) {
+                localStorage.setItem(BEST_TIME_KEY, elapsedTime.toString());
+                loadBestTime(); // Update display with new best time
+                return true;
+            }
+            return false;
+        }
+
+        // --- Animation Function ---
+
+        /**
+         * Plays a green sweeping animation on the grid.
+         */
+        function playCompletionAnimation() {
+            gameBoardElement.classList.add('solved-animation');
+            setTimeout(() => {
+                gameBoardElement.classList.remove('solved-animation');
+            }, 1000); // Duration of the animation in CSS
+        }
+
+        // --- Game Logic ---
+
+        /**
+         * Generates a new 4x4 Sudoku puzzle.
+         */
+        function generatePuzzle() {
+            // Reset selected cell on new game
+            if (selectedCellInput) {
+                selectedCellInput.closest('.grid-cell').classList.remove('selected-cell');
+                selectedCellInput = null;
+            }
+
+            // Initialize empty boards
+            puzzleBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(0));
+            solvedBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(0));
+
+            // Create a completely empty board to solve initially
+            const tempBoardForSolving = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(0));
+
+            // Solve this empty board to get a full valid solved Sudoku
+            if (!solveSudoku(tempBoardForSolving)) {
+                console.error("Critical error: solveSudoku failed to fill an empty board. This should not happen.");
+                return; // Cannot proceed without a solved board
+            }
+
+            solvedBoard = deepCopyBoard(tempBoardForSolving); // This is our guaranteed solution
+
+            // Now, create the puzzle by removing numbers from the solved board
+            let cellsToRemove = 6; // Number of cells to remove for the puzzle (adjust for difficulty)
+            let cells = [];
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    cells.push({ row: r, col: c });
+                }
+            }
+            shuffleArray(cells); // Randomize the order of cells to remove
+
+            puzzleBoard = deepCopyBoard(solvedBoard); // Start with the solved board
+
+            for (let i = 0; i < cellsToRemove; i++) {
+                const { row, col } = cells[i];
+                if (row !== undefined && col !== undefined) {
+                    puzzleBoard[row][col] = 0; // Remove the number
+                }
+            }
+
+            userBoard = deepCopyBoard(puzzleBoard); // User's initial board starts as the puzzle
+            renderBoard();
+            startTimer(); // Start the timer for the new game
+        }
+
+        /**
+         * Renders the current state of the userBoard to the HTML.
+         */
+        function renderBoard() {
+            gameBoardElement.innerHTML = ''; // Clear existing cells
+            // Ensure no animation class from previous game
+            gameBoardElement.classList.remove('solved-animation');
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const cellDiv = document.createElement('div');
+                    cellDiv.classList.add('grid-cell');
+                    // Add data attributes to the cell div for easier CSS targeting if needed
+                    cellDiv.dataset.row = r;
+                    cellDiv.dataset.col = c;
+
+                    // Apply thicker borders for 2x2 subgrids
+                    // Thicker right border for cells in the first and third columns (0-indexed 1 and 3)
+                    if (c === SUBGRID_SIZE - 1) { // || c === BOARD_SIZE - 1) { // col 1 or col 3
+                        cellDiv.classList.add('border-r-2', 'border-indigo-700');
+                    }
+                    // Thicker bottom border for cells in the first and third rows (0-indexed 1 and 3)
+                    if (r === SUBGRID_SIZE - 1) {// || r === BOARD_SIZE - 1) { // row 1 or row 3
+                        cellDiv.classList.add('border-b-2', 'border-indigo-700');
+                    }
+
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.min = '1';
+                    input.max = '4';
+                    input.maxLength = '1'; // Visual hint, actual validation is on input event
+                    input.dataset.row = r; // Keep data attributes on input for logic
+                    input.dataset.col = c;
+                    input.value = userBoard[r][c] !== 0 ? userBoard[r][c] : '';
+                    input.readOnly = true;
+                    
+                    if (puzzleBoard[r][c] !== 0) {
+                        //input.readOnly = true; // Initial puzzle numbers cannot be changed
+                        input.isFixedCell = true;
+                        cellDiv.classList.add('initial-cell');
+                    } else {
+                        input.isFixedCell = false;
+                        // Add event listener for user input (typing)
+                        //input.addEventListener('input', handleCellInput);
+                        // Add focus listener to set the selected cell for number buttons
+                        input.addEventListener('focus', (e) => {
+                            // Remove selected-cell class from previously selected cell
+                            if (selectedCellInput && selectedCellInput !== e.target) {
+                                selectedCellInput.closest('.grid-cell').classList.remove('selected-cell');
+                            }
+                            selectedCellInput = e.target;
+                            selectedCellInput.closest('.grid-cell').classList.add('selected-cell');
+                        });
+                        // Add blur listener to remove selected-cell class when focus leaves
+                        input.addEventListener('blur', () => {
+                             // Only deselect if focus moves outside the grid or number buttons
+                             // This is a bit tricky with blur, but generally, when a new cell is focused,
+                             // the old one is deselected via the 'focus' event handler.
+                             // For simplicity, we might just keep it selected until another cell is clicked or new game.
+                             // For this implementation, the focus listener will handle clearing previous selections.
+                        });
+                    }
+                    cellDiv.appendChild(input);
+                    gameBoardElement.appendChild(cellDiv);
+                }
+            }
+            showMessage('XXX', 'success'); // Clear any previous messages
+            loadBestTime(); // Load and display best time on render
+            renderNumberButtons(); // Render the number input buttons
+        }
+
+        /**
+         * Handles user input in a Sudoku cell (whether typed or from button click).
+         * @param {Event} event The input event or a custom event from button click.
+         */
+        function handleCellInput(event) {
+            const input = event.target || selectedCellInput; // Use event.target for typing, selectedCellInput for buttons
+            if (!input || input.isFixedCell) return; // Do nothing if no input or if it's a fixed cell
+
+            let value = parseInt(input.value);
+            const row = parseInt(input.dataset.row);
+            const col = parseInt(input.dataset.col);
+            if (isNaN(value) || value < 1 || value > 4) {
+                userBoard[row][col] = 0; // Treat invalid input as empty
+                input.value = ''; // Clear display if invalid
+            } else {
+                userBoard[row][col] = value;
+            }
+            // Remove highlighting as user types
+            input.closest('.grid-cell').classList.remove('incorrect-cell', 'correct-cell');
+
+            // --- Auto-check if the board is full ---
+            if (isBoardFull()) {
+                checkSolution();
+            }
+        }
+
+        /**
+         * Checks the user's current solution against the solved board.
+         * Highlights correct/incorrect cells.
+         */
+        function checkSolution() {
+            let correctCount = 0;
+            let emptyCount = 0;
+            let incorrectCount = 0;
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const cellInput = gameBoardElement.children[r * BOARD_SIZE + c].querySelector('input');
+                    cellInput.closest('.grid-cell').classList.remove('incorrect-cell', 'correct-cell'); // Reset highlights
+
+                    if (userBoard[r][c] === 0) {
+                        emptyCount++;
+                    } else if (userBoard[r][c] === solvedBoard[r][c]) {
+                        correctCount++;
+                        cellInput.closest('.grid-cell').classList.add('correct-cell');
+                    } else {
+                        incorrectCount++;
+                        cellInput.closest('.grid-cell').classList.add('incorrect-cell');
+                    }
+                }
+            }
+
+            if (emptyCount === 0 && incorrectCount === 0) {
+                stopTimer(); // Stop the timer
+                if (saveBestTime()) { // Save the best time
+                    showMessage("Congratulations! You got the best time!", "success");
+                } else {
+                    showMessage("Congratulations! You solved it!", "success");
+                }
+                playCompletionAnimation(); // Play animation
+                // Make all cells read-only after solving to prevent further edits
+                const inputs = gameBoardElement.querySelectorAll('input');
+                inputs.forEach(input => {
+                    input.readOnly = true;
+                    input.closest('.grid-cell').classList.remove('selected-cell'); // Deselect all cells
+                });
+                selectedCellInput = null; // Clear selected cell
+            } else if (incorrectCount > 0) {
+                showMessage("Some cells are incorrect. Keep trying!", "error");
+            } else {
+                showMessage("Keep going! There are still empty cells.", "error");
+            }
+        }
+
+        /**
+         * Fills the board with the solved solution.
+         */
+        function revealSolution() {
+            stopTimer(); // Stop the timer if solving
+            userBoard = deepCopyBoard(solvedBoard);
+            renderBoard(); // Re-render to show solved board
+            // Make all cells read-only after solving
+            const inputs = gameBoardElement.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.readOnly = true;
+                input.closest('.grid-cell').classList.remove('incorrect-cell', 'correct-cell', 'selected-cell'); // Clear highlights and deselect
+            });
+            selectedCellInput = null; // Clear selected cell
+            showMessage("Here's the solution!", "success");
+        }
+
+        /**
+         * Renders the number input buttons (1-4 and Clear).
+         */
+        function renderNumberButtons() {
+            numberInputButtons.innerHTML = ''; // Clear existing buttons
+            for (let i = 1; i <= BOARD_SIZE; i++) {
+                const numBtn = document.createElement('div');
+                numBtn.classList.add('num-btn');
+                numBtn.textContent = i;
+                numBtn.addEventListener('click', () => {
+                    if (selectedCellInput && !selectedCellInput.isFixedCell) { //!selectedCellInput.readOnly) {
+                        selectedCellInput.value = i;
+                        // Manually trigger the input handling logic
+                        // Create a dummy event object for handleCellInput
+                        handleCellInput({ target: selectedCellInput });
+                    }
+                });
+                numberInputButtons.appendChild(numBtn);
+            }
+
+            // Add Clear button
+            const clearBtn = document.createElement('div');
+            clearBtn.classList.add('num-btn', 'clear-btn');
+            clearBtn.textContent = 'Clear';
+            clearBtn.addEventListener('click', () => {
+                if (selectedCellInput && !selectedCellInput.isFixedCell) { //!selectedCellInput.readOnly) {
+                    selectedCellInput.value = '';
+                    // Manually trigger the input handling logic
+                    handleCellInput({ target: selectedCellInput });
+                }
+            });
+            numberInputButtons.appendChild(clearBtn);
+        }
+
+        // --- Event Listeners ---
+        newGameBtn.addEventListener('click', generatePuzzle);
+        checkBtn.addEventListener('click', checkSolution);
+        solveBtn.addEventListener('click', revealSolution);
+
+        // Initial game setup
+        window.onload = function() {
+            generatePuzzle();
+            loadBestTime(); // Load best time on initial load
+        };
+
+    </script>
+</body>
+</html>
