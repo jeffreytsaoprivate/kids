@@ -308,7 +308,16 @@
         function saveGameState() {
             localStorage.setItem('mathChallengeScore', score);
             localStorage.setItem('mathChallengeDifficulty', difficulty);
-            localStorage.setItem('lastChallengeDate', new Date().toDateString()); // Save current date as last challenge date
+            if (isChallengeDay) {
+                localStorage.setItem('lastChallengeDate', new Date().toDateString()); // Save current date as last challenge date
+            } else {
+                const lastChallengeDate = localStorage.getItem('lastChallengeDate');
+                if (lastChallengeDate===undefined || lastChallengeDate===null || lastChallengeDate=='') {
+                    localStorage.setItem('lastChallengeDate', new Date().toDateString()); // Save current date as last challenge date
+                } else {
+                    localStorage.setItem('lastChallengeDate',lastChallengeDate);
+                }
+            }
             localStorage.setItem('isChallengeDay', isChallengeDay);
             localStorage.setItem('originalScore', originalScore);
             localStorage.setItem('challengeHighScore', challengeHighScore);
