@@ -15,11 +15,11 @@
             align-items: center;
             justify-content: center;
             padding: 1rem;
-            position: relative; /* Added for absolute positioning of difficulty/score */
-            transition: background-image 0.5s ease-in-out; /* Smooth transition for background */
+            position: relative;
+            transition: background-image 0.5s ease-in-out;
         }
         body.challenge-day-bg {
-            background-image: linear-gradient(to bottom right, #facc15, #ef4444); /* Exciting challenge colors */
+            background-image: linear-gradient(to bottom right, #facc15, #ef4444);
         }
         .container {
             background-color: white;
@@ -31,7 +31,7 @@
             align-items: center;
             max-width: 32rem;
             width: 100%;
-            position: relative; /* Needed if score/difficulty were inside */
+            position: relative;
         }
         .problem-display {
             font-size: 3.75rem;
@@ -122,22 +122,34 @@
         .message-error {
             color: #b91c1c;
         }
-        .score-display {
+        .score-display, .timer-display, .best-time-display {
             position: absolute;
-            top: 1rem;
-            right: 1rem;
             background-color: #fcd34d;
             color: #b45309;
-            padding-left: 1.5rem;
-            padding-right: 1.5rem;
-            padding-top: 0.75rem;
-            padding-bottom: 0.75rem;
+            padding: 0.75rem 1.5rem;
             border-radius: 9999px;
             font-weight: 700;
-            font-size: 1.25rem; /* Adjusted for better fit */
+            font-size: 1.25rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            z-index: 10; /* Ensure it stays above other content */
+            z-index: 10;
         }
+        .score-display {
+            top: 1rem;
+            right: 1rem;
+        }
+        .timer-display {
+            top: 5rem; /* Position below score */
+            right: 1rem;
+            background-color: #fef08a; /* Lighter yellow for timer */
+            color: #b45309;
+        }
+        .best-time-display {
+            top: 9rem; /* Position below timer */
+            right: 1rem;
+            background-color: #fef9c3; /* Even lighter yellow for best time */
+            color: #b45309;
+        }
+
         /* Keypad Styles */
         .keypad-grid {
             display: grid;
@@ -148,10 +160,7 @@
             margin-top: 1rem;
         }
         .keypad-btn {
-            padding-left: 1rem;
-            padding-right: 1rem;
-            padding-top: 0rem;
-            padding-bottom: 0rem;
+            padding: 0; /* Remove padding to let min-width/height control size */
             border-radius: 0.75rem;
             font-size: 1.875rem;
             font-weight: 700;
@@ -199,7 +208,11 @@
             border-radius: 9999px;
             padding: 0.25rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            z-index: 10; /* Ensure it stays above other content */
+            z-index: 10;
+            /* Ensure it can accommodate more options */
+            flex-wrap: wrap; 
+            gap: 0.25rem; /* Small gap between options if wrapped */
+            max-width: calc(100% - 2rem); /* Prevent overflow on very small screens */
         }
         .difficulty-option {
             padding: 0.5rem 1rem;
@@ -218,7 +231,6 @@
         .difficulty-option:not(.selected):hover {
             background-color: #d1d5db; /* hover:bg-gray-300 */
         }
-
         /* Challenge Day Sticker */
         .challenge-sticker {
             position: absolute;
@@ -236,7 +248,6 @@
             z-index: 20;
             animation: bounce 0.8s infinite alternate;
         }
-
         @keyframes bounce {
             from { transform: translateX(-50%) rotate(-5deg) translateY(0); }
             to { transform: translateX(-50%) rotate(-5deg) translateY(-5px); }
@@ -248,10 +259,10 @@
         <div class="difficulty-option selected" data-difficulty="easy">Easy</div>
         <div class="difficulty-option" data-difficulty="medium">Medium</div>
         <div class="difficulty-option" data-difficulty="hard">Hard</div>
-    </div>
+        <div class="difficulty-option" data-difficulty="timeTrial">Time Trial</div> </div>
 
     <div class="score-display" id="score-display">Score: 0</div>
-    <div id="challenge-sticker" class="challenge-sticker hidden">Challenge Day!</div>
+    <div class="timer-display hidden" id="timer-display">Time: 0.0s</div> <div class="best-time-display hidden" id="best-time-display">Best: N/A</div> <div id="challenge-sticker" class="challenge-sticker hidden">Challenge Day!</div>
 
     <div class="container">
         <div id="problem-display" class="problem-display"></div>
@@ -289,6 +300,8 @@
         const difficultyToggle = document.getElementById('difficulty-toggle');
         const challengeSticker = document.getElementById('challenge-sticker');
         const body = document.body;
+        const timerDisplay = document.getElementById('timer-display'); // New
+        const bestTimeDisplay = document.getElementById('best-time-display'); // New
 
         // Game State Variables
         let currentProblem = {}; // Stores {num1, num2, operator, answer}
@@ -301,38 +314,46 @@
         let originalScore = 0; // To store score before challenge day
         let challengeHighScore = 0; // High score achieved on the current challenge day
 
+        // Time Trial Variables (NEW)
+        let timerInterval;
+        let startTime;
+        let bestTime = Infinity; // Stores the shortest time, initialized to infinity
+        let questionsAnsweredTimeTrial = 0;
+        const TOTAL_TIME_TRIAL_QUESTIONS = 5; // Number of questions for Time Trial
+
+        // Difficulty Settings (Replaced switch in generateProblem)
+        const difficultySettings = {
+            easy: { min: 0, max: 10, operations: ['+', '-'], type: 'normal' },
+            medium: { min: 0, max: 50, operations: ['+', '-', '*'], type: 'normal' },
+            hard: { min: 0, max: 100, operations: ['+', '-', '*', '/'], type: 'normal' },
+            timeTrial: { min: 0, max: 9, operations: ['+'], type: 'timed' } // New Difficulty
+        };
+
         // --- Helper Functions ---
         /**
-         * Saves the current score and difficulty to localStorage, and challenge day data.
+         * Saves the current game state to localStorage, including Time Trial best time.
          */
         function saveGameState() {
             localStorage.setItem('mathChallengeScore', score);
             localStorage.setItem('mathChallengeDifficulty', difficulty);
-            if (isChallengeDay) {
-                localStorage.setItem('lastChallengeDate', new Date().toDateString()); // Save current date as last challenge date
-            } else {
-                const lastChallengeDate = localStorage.getItem('lastChallengeDate');
-                if (lastChallengeDate===undefined || lastChallengeDate===null || lastChallengeDate=='') {
-                    localStorage.setItem('lastChallengeDate', new Date().toDateString()); // Save current date as last challenge date
-                } else {
-                    localStorage.setItem('lastChallengeDate',lastChallengeDate);
-                }
-            }
+            if (isChallengeDay) localStorage.setItem('lastChallengeDate', new Date().toDateString()); // update last ChallengeDate
             localStorage.setItem('isChallengeDay', isChallengeDay);
             localStorage.setItem('originalScore', originalScore);
             localStorage.setItem('challengeHighScore', challengeHighScore);
+            localStorage.setItem('bestTime', bestTime === Infinity ? 'Infinity' : bestTime.toFixed(1)); // Save best time
         }
 
         /**
-         * Loads the score and difficulty from localStorage, and challenge day data.
+         * Loads the game state from localStorage, including Time Trial best time.
          */
         function loadGameState() {
             const savedScore = localStorage.getItem('mathChallengeScore');
             const savedDifficulty = localStorage.getItem('mathChallengeDifficulty');
-            const lastChallengeDate = localStorage.getItem('lastChallengeDate');
+            const lastChallengeDateStr = localStorage.getItem('lastChallengeDate');
             const savedIsChallengeDay = localStorage.getItem('isChallengeDay');
             const savedOriginalScore = localStorage.getItem('originalScore');
             const savedChallengeHighScore = localStorage.getItem('challengeHighScore');
+            const savedBestTime = localStorage.getItem('bestTime'); // Load best time
 
             if (savedScore !== null) {
                 score = parseInt(savedScore);
@@ -349,11 +370,14 @@
             if (savedChallengeHighScore !== null) {
                 challengeHighScore = parseInt(savedChallengeHighScore);
             }
+            if (savedBestTime !== null && savedBestTime !== 'Infinity') {
+                bestTime = parseFloat(savedBestTime);
+            } else if (savedBestTime === 'Infinity') {
+                bestTime = Infinity;
+            }
 
-            // Check if it's a new day and update challenge day status
-            checkChallengeDay(lastChallengeDate);
-
-            updateScoreDisplay();
+            checkChallengeDay(lastChallengeDateStr); // Moved outside of initial assignments
+            updateDisplays(); // Update all displays
             updateDifficultyToggle();
         }
 
@@ -367,39 +391,32 @@
             let lastChallengeDate = lastChallengeDateStr ? new Date(lastChallengeDateStr) : null;
 
             if (isChallengeDay) {
-                // If it's still the same challenge day, keep the state
                 if (todayDateStr === lastChallengeDateStr) {
                     applyChallengeDayStyling();
                     return;
                 } else {
-                    // Challenge day is over, restore original score and reset challenge state
                     score = originalScore;
                     isChallengeDay = false;
                     originalScore = 0;
-                    //challengeHighScore = 0; // Reset challenge high score for the new non-challenge day
                     removeChallengeDayStyling();
-                    saveGameState(); // Save the restored score and non-challenge state
+                    saveGameState();
                 }
             }
 
-            // Calculate days since last challenge or game start
             let daysSinceLastChallenge = 0;
-            if (lastChallengeDate) {
+            if (lastChallengeDate && !isNaN(lastChallengeDate.getTime())) { // Ensure lastChallengeDate is valid
                 const diffTime = Math.abs(today.getTime() - lastChallengeDate.getTime());
                 daysSinceLastChallenge = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             } else {
-                // If no last challenge date, consider it day 0 to potentially start a challenge
-                daysSinceLastChallenge = CHALLENGE_INTERVAL_DAYS; // Make it trigger on first run if no date
+                daysSinceLastChallenge = CHALLENGE_INTERVAL_DAYS; // Trigger challenge on first run if no valid date
             }
 
             if (daysSinceLastChallenge >= CHALLENGE_INTERVAL_DAYS) {
-                // It's time for a new challenge day!
                 isChallengeDay = true;
-                originalScore = score; // Store current score
-                score = 0; // Reset score for the challenge
-                //challengeHighScore = 0; // Reset challenge high score for the new challenge
+                originalScore = score;
+                score = 0;
                 applyChallengeDayStyling();
-                saveGameState(); // Save new challenge state
+                saveGameState();
                 showMessage("It's CHALLENGE DAY! Score for high score!", "success", 3);
             }
         }
@@ -448,14 +465,26 @@
         }
 
         /**
-         * Updates the score displayed on the screen.
+         * Updates all displays (score, timer, best time).
          */
-        function updateScoreDisplay() {
+        function updateDisplays() {
             let displayScore = `Score: ${score}`;
             if (isChallengeDay) {
                 displayScore += ` (High Score: ${challengeHighScore})`;
             }
             scoreDisplay.textContent = displayScore;
+
+            // Only show timer/best time displays if in Time Trial mode
+            if (difficulty === 'timeTrial') {
+                scoreDisplay.classList.add('hidden'); // Hide score display for Time Trial
+                timerDisplay.classList.remove('hidden');
+                bestTimeDisplay.classList.remove('hidden');
+                bestTimeDisplay.textContent = `Best: ${bestTime === Infinity ? '-' : bestTime.toFixed(1) + 's'}`;
+            } else {
+                scoreDisplay.classList.remove('hidden'); // Show score display for normal modes
+                timerDisplay.classList.add('hidden');
+                bestTimeDisplay.classList.add('hidden');
+            }
         }
 
         /**
@@ -471,64 +500,67 @@
             });
         }
 
+        // --- Timer Functions (NEW) ---
+        function startTimer() {
+            stopTimer(); // Clear any existing timer first
+            startTime = new Date().getTime();
+            timerDisplay.textContent = `Time: 0.0s`; // Reset display immediately
+            timerInterval = setInterval(() => {
+                const elapsedTime = (new Date().getTime() - startTime) / 1000;
+                timerDisplay.textContent = `Time: ${elapsedTime.toFixed(1)}s`;
+            }, 100);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
         // --- Game Logic ---
         /**
          * Generates a new math problem based on the current difficulty.
          */
         function generateProblem() {
-            let operations = ['+', '-'];
-            let num1, num2, answer;
-            let minVal1, maxVal1, minVal2, maxVal2, minDivisor, maxDivisor, minResult, maxResult;
+            const config = difficultySettings[difficulty];
+            let num1, num2, operator, answer;
 
-            // Define ranges based on difficulty
-            switch (difficulty) {
-                case 'easy':
-                    minVal1 = minVal2 = 0;
-                    maxVal1 = maxVal2 = 10;
-                    minDivisor = 1; maxDivisor = 10;
-                    minResult = 0; maxResult = 10;
-                    break;
-                case 'medium':
-                    minVal1 = minVal2 = 0;
-                    maxVal1 = maxVal2 = 10;
-                    operations.push('x');
-                    minDivisor = 1; maxDivisor = 10;
-                    minResult = 0; maxResult = 10;
-                    break;
-                case 'hard':
-                    minVal1 = minVal2 = 0;
-                    maxVal1 = maxVal2 = 10;
-                    operations.push('x');
-                    operations.push('/');
-                    minDivisor = 1; maxDivisor = 10;
-                    minResult = 0; maxResult = 10;
-                    break;
-            }
-            const operator = operations[(Math.random() * operations.length) | 0];
+            if (config.type === 'timed') {
+                // Time Trial: Only additions, numbers 0-9
+                num1 = getRandomInt(config.min, config.max); // 0-9
+                num2 = getRandomInt(config.min, config.max); // 0-9
+                operator = '+';
+                answer = num1 + num2;
+            } else {
+                // Normal difficulties: easy, medium, hard
+                operator = config.operations[(Math.random() * config.operations.length) | 0];
 
-            switch (operator) {
-                case '+':
-                    num1 = getRandomInt(minVal1, maxVal1);
-                    num2 = getRandomInt(minVal2, maxVal2);
-                    answer = num1 + num2;
-                    break;
-                case '-':
-                    num2 = getRandomInt(minVal2, maxVal2);
-                    answer = getRandomInt(minVal1, maxVal1); // Ensure answer is within a reasonable range
-                    num1 = num2 + answer; // Make sure num1 is large enough for subtraction
-                    break;
-                case 'x':
-                    num1 = getRandomInt(minVal1, maxVal1);
-                    num2 = getRandomInt(minVal2, maxVal2);
-                    answer = num1 * num2;
-                    break;
-                case '/':
-                    let divisor = getRandomInt(minDivisor, maxDivisor);
-                    let result = getRandomInt(minResult, maxResult);
-                    num1 = divisor * result;
-                    num2 = divisor;
-                    answer = result;
-                    break;
+                switch (operator) {
+                    case '+':
+                        num1 = getRandomInt(config.min, config.max);
+                        num2 = getRandomInt(config.min, config.max);
+                        answer = num1 + num2;
+                        break;
+                    case '-':
+                        num2 = getRandomInt(config.min, config.max);
+                        answer = getRandomInt(config.min, config.max); // Ensure answer is within range
+                        num1 = num2 + answer; // Make sure num1 is large enough for subtraction
+                        break;
+                    case '*':
+                        num1 = getRandomInt(config.min, config.max);
+                        num2 = getRandomInt(config.min, config.max);
+                        answer = num1 * num2;
+                        break;
+                    case '/':
+                        // Ensure division results in an integer
+                        let divisor, result;
+                        do {
+                            divisor = getRandomInt(1, config.max); // Divisor should not be zero
+                            result = getRandomInt(config.min, config.max); // Result should be within range
+                            num1 = divisor * result;
+                        } while (num1 > config.max || num1 < config.min); // Ensure num1 is also within max/min
+                        num2 = divisor;
+                        answer = result;
+                        break;
+                }
             }
 
             currentProblem = { num1, num2, operator, answer };
@@ -548,45 +580,117 @@
                 return;
             }
 
-            if (userAnswer === currentProblem.answer) {
-                showMessage("Correct! 🎉", "success", 2);
-                score++;
-                if (isChallengeDay) {
-                    challengeHighScore = Math.max(challengeHighScore, score); // Update challenge high score
+            const isCorrect = (userAnswer === currentProblem.answer);
+
+            if (difficulty === 'timeTrial') {
+                if (isCorrect) {
+                    questionsAnsweredTimeTrial++;
+                    showMessage(`Correct! ${questionsAnsweredTimeTrial}/${TOTAL_TIME_TRIAL_QUESTIONS}`, "success", 1);
+                    if (questionsAnsweredTimeTrial === TOTAL_TIME_TRIAL_QUESTIONS) {
+                        stopTimer();
+                        const finalTime = (new Date().getTime() - startTime) / 1000;
+                        
+                        if (finalTime < bestTime) {
+                            bestTime = finalTime;
+                            showMessage(`New Best Time! ${bestTime.toFixed(1)}s`, "success", 5);
+                        } else {
+                             showMessage(`Time Trial Complete! Your Time: ${finalTime.toFixed(1)}s`, "success", 5);
+                        }
+                        saveGameState(); // Save the new best time (if applicable)
+                        updateDisplays(); // Update the best time display
+                        
+                        // Give some time to read the message, then start a new game
+                        setTimeout(startGame, 3000); 
+                    } else {
+                        // For Time Trial, just generate the next problem immediately on correct answer
+                        generateProblem(); 
+                    }
+                } else {
+                    // For time trial, just show error but don't penalize score or time
+                    showMessage(`Oops! Try again. The answer was ${currentProblem.answer}.`, "error", 2);
                 }
-                updateScoreDisplay();
-                saveGameState(); // Save score after each correct answer
-                setTimeout(generateProblem, 1000);
             } else {
-                showMessage(`Oops! Try again.`, "error", 5);
+                // Logic for normal difficulties (Easy, Medium, Hard)
+                if (isCorrect) {
+                    showMessage("Correct! 🎉", "success", 2);
+                    score++;
+                    if (isChallengeDay) {
+                        challengeHighScore = Math.max(challengeHighScore, score);
+                    }
+                    updateDisplays();
+                    saveGameState();
+                    setTimeout(generateProblem, 1000);
+                } else {
+                    showMessage(`Oops! Try again.`, "error", 2); 
+                    // No score deduction on incorrect in normal mode, as per original logic.
+                }
             }
         }
 
         /**
          * Reveals the correct answer and generates a new problem.
+         * Behavior adjusted for Time Trial.
          */
         function showCorrectAnswerAndNewProblem() {
-            const userAnswer = parseInt(answerInput.value);
-
-            if (userAnswer === currentProblem.answer) {
-                showMessage("Correct! 🎉", "success", 2);
-                score++;
-                if (isChallengeDay) {
-                    challengeHighScore = Math.max(challengeHighScore, score); // Update challenge high score
+            if (difficulty === 'timeTrial') {
+                showMessage(`The answer was ${currentProblem.answer}. Skipping...`, "error", 2);
+                // Skipping a question in Time Trial means it doesn't count as answered correctly
+                // and the timer keeps running. Simply move to the next question.
+                questionsAnsweredTimeTrial++; // Still count towards total for completion
+                if (questionsAnsweredTimeTrial === TOTAL_TIME_TRIAL_QUESTIONS) {
+                    stopTimer();
+                    const finalTime = (new Date().getTime() - startTime) / 1000;
+                    showMessage(`Time Trial Complete! Your Time: ${finalTime.toFixed(1)}s`, "success", 5);
+                    // No best time update here as it wasn't solved correctly
+                    saveGameState();
+                    updateDisplays();
+                    setTimeout(startGame, 3000);
+                } else {
+                    setTimeout(generateProblem, 1500); 
                 }
-                updateScoreDisplay();
-                saveGameState();
-                setTimeout(generateProblem, 1000);
             } else {
-                showMessage(`The correct answer was ${currentProblem.answer}.`, "error", 5);
-                if (!isNaN(userAnswer) && !isChallengeDay) { // Deduct point if incorrect, but not on challenge day
-                    score = Math.max(0, score - 1);
+                // Original logic for normal difficulties
+                const userAnswer = parseInt(answerInput.value);
+                const isCorrect = (userAnswer === currentProblem.answer);
+
+                if (isCorrect) {
+                    showMessage("Correct! 🎉", "success", 2);
+                    score++;
+                    if (isChallengeDay) {
+                        challengeHighScore = Math.max(challengeHighScore, score);
+                    }
+                    updateDisplays();
+                    saveGameState();
+                    setTimeout(generateProblem, 1000);
+                } else {
+                    showMessage(`The correct answer was ${currentProblem.answer}.`, "error", 5);
+                    if (!isNaN(userAnswer) && !isChallengeDay) {
+                        score = Math.max(0, score - 1); // Deduct point if incorrect and not on challenge day
+                    }
+                    updateDisplays();
+                    saveGameState();
+                    setTimeout(generateProblem, 1000);
                 }
-                updateScoreDisplay();
-                saveGameState();
-                setTimeout(generateProblem, 1000);
             }
         }
+
+        /**
+         * Initializes or restarts the game based on current difficulty.
+         */
+        function startGame() {
+            answerInput.value = '';
+            showMessage('', '', 0);
+
+            if (difficulty === 'timeTrial') {
+                questionsAnsweredTimeTrial = 0; // Reset question counter for Time Trial
+                startTimer(); // Start timer ONLY at the beginning of a new Time Trial game
+            } else {
+                stopTimer(); // Ensure timer is stopped if switching from Time Trial
+            }
+            updateDisplays(); // Update visibility of timer/best time displays
+            generateProblem(); // Generate the first problem for the new game
+        }
+
 
         // --- Keypad Logic ---
         keypad.addEventListener('click', (event) => {
@@ -610,10 +714,13 @@
         difficultyToggle.addEventListener('click', (event) => {
             const target = event.target;
             if (target.classList.contains('difficulty-option')) {
-                difficulty = target.dataset.difficulty;
-                updateDifficultyToggle();
-                saveGameState(); // Save chosen difficulty
-                generateProblem(); // Generate a new problem with the new difficulty
+                const newDifficulty = target.dataset.difficulty;
+                if (difficulty !== newDifficulty) { // Only update if difficulty actually changed
+                    difficulty = newDifficulty;
+                    updateDifficultyToggle();
+                    saveGameState(); // Save chosen difficulty
+                    startGame(); // Start a new game with the new difficulty
+                }
             }
         });
 
@@ -621,10 +728,18 @@
         checkBtn.addEventListener('click', checkAnswer);
         newProblemBtn.addEventListener('click', showCorrectAnswerAndNewProblem);
 
+        // Allow 'Enter' key to submit answer
+        answerInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent default form submission behavior if applicable
+                checkAnswer();
+            }
+        });
+
         // Initial game setup
         window.onload = function() {
-            loadGameState(); // Load score and difficulty on startup, also checks for challenge day
-            generateProblem();
+            loadGameState(); // Load all game states
+            startGame(); // Start the game with the loaded difficulty
         };
     </script>
 </body>
