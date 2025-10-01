@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bubble Word Game</title>
+    <style>
+        body {
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            flex-direction: column;
+        }
+        #game-container {
+            position: relative;
+            width: 80%;
+            height: 80vh;
+            background-color: #fff;
+            border: 2px solid #333;
+            overflow: hidden;
+            border-radius: 10px;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        #ui-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+        #score-display {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        #collected-letters, #formed-word {
+            min-height: 40px;
+            border: 2px dashed #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+        }
+        .letter-tile {
+            font-size: 1.5em;
+            font-weight: bold;
+            padding: 5px 10px;
+            border: 2px solid #4CAF50;
+            background-color: #e6ffe6;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        #submit-btn, #clear-btn {
+            padding: 10px 20px;
+            font-size: 1.2em;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 0 5px;
+        }
+        #clear-btn {
+            background-color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-container">
+        <div id="score-display">Score: 0</div>
+        <h3>Collected Letters:</h3>
+        <div id="collected-letters"></div>
+        <h3>Formed Word:</h3>
+        <div id="formed-word"></div>
+        <div>
+            <button id="submit-btn">Submit Word</button>
+            <button id="clear-btn">Clear Word</button>
+        </div>
+    </div>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+    </div>
+    
+    <script>
+
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+const scoreDisplay = document.getElementById('score-display');
+const collectedLettersDiv = document.getElementById('collected-letters');
+const formedWordDiv = document.getElementById('formed-word');
+const submitBtn = document.getElementById('submit-btn');
+const clearBtn = document.getElementById('clear-btn');
+
+let bubbles = [];
+let collectedLetters = [];
+let formedWord = [];
+let score = 0;
+const bubbleRadius = 25;
+
+// List of common 4-letter words
+const words = ['ABLE', 'ALSO', 'AREA', 'ARMY', 'AWAY', 'BABY', 'BACK', 'BALL', 'BAND', 'BANK', 'BARE', 'BARK', 'BARN', 'BASE', 'BEAR', 'BEAT', 'BEEN', 'BELL', 'BELT', 'BEST', 'BIKE', 'BILL', 'BIRD', 'BITE', 'BLUE', 'BOAT', 'BODY', 'BOOK', 'BOWL', 'BURN', 'BUSH', 'BUSY', 'CAKE', 'CALL', 'CALM', 'CAME', 'CARD', 'CARE', 'CARS', 'CASE', 'CASH', 'CAST', 'CATS', 'CELL', 'CHAT', 'CHIP', 'CITY', 'CLUB', 'COAT', 'COLD', 'COME', 'COOK', 'COOL', 'COPE', 'COST', 'CREW', 'DARK', 'DATA', 'DATE', 'DEAD', 'DEAL', 'DEAR', 'DEEP', 'DEER', 'DESK', 'DIAL', 'DIET', 'DIRT', 'DISH', 'DISK', 'DOES', 'DOGS', 'DONE', 'DOOR', 'DOWN', 'DRAW', 'DROP', 'DULL', 'DUSK', 'DUTY', 'EACH', 'EARL', 'EARN', 'EASY', 'EDGE', 'ELSE', 'EVEN', 'EVER', 'EVIL', 'EXIT', 'FACE', 'FACT', 'FADE', 'FALL', 'FAME', 'FARM', 'FAST', 'FEAR', 'FEEL', 'FEET', 'FELL', 'FILE', 'FILM', 'FIND', 'FINE', 'FIRE', 'FIRM', 'FISH', 'FIVE', 'FLAG', 'FLEW', 'FLOW', 'FOOD', 'FOOT', 'FORM', 'FOUR', 'FREE', 'FROM', 'FULL', 'FUND', 'GAIN', 'GAME', 'GATE', 'GAVE', 'GEAR', 'GENE', 'GIFT', 'GIRL', 'GIVE', 'GLAD', 'GOAL', 'GOLD', 'GONE', 'GOOD', 'GRAB', 'GRAY', 'GREW', 'GRIP', 'GROW', 'HAIR', 'HALF', 'HALL', 'HAND', 'HANG', 'HARD', 'HAVE', 'HEAD', 'HEAR', 'HEAT', 'HELD', 'HELL', 'HELP', 'HERE', 'HERO', 'HIDE', 'HIGH', 'HILL', 'HOLD', 'HOLE', 'HOLY', 'HOME', 'HOPE', 'HUGE', 'INCH', 'INTO', 'IRON', 'ITEM', 'JAIL', 'JAVA', 'JOIN', 'JOKE', 'JUDO','JUMP', 'JUST', 'KEEP', 'KEPT', 'KICK', 'KILL', 'KIND', 'KING', 'KISS', 'KNEE', 'KNEW', 'KNOW', 'LACE', 'LACK', 'LADY', 'LAID', 'LAND', 'LAST', 'LATE', 'LAZY', 'LEAD', 'LEAF', 'LEAN', 'LEFT', 'LEGS', 'LEND', 'LESS', 'LIFE', 'LIFT', 'LIKE', 'LINE', 'LINK', 'LIST', 'LIVE', 'LOAD', 'LONG', 'LOOK', 'LOSE', 'LOSS', 'LOST', 'LOVE', 'LUSH', 'MADE', 'MAIN', 'MAKE', 'MANY', 'MARK', 'MASS', 'MATH', 'MEAT', 'MEET', 'MENU', 'MILE', 'MILK', 'MIND', 'MINE', 'MISS', 'MODE', 'MOON', 'MORE', 'MOVE', 'MUCH', 'MUST', 'NAME', 'NEAR', 'NECK', 'NEED', 'NEST', 'NEWS', 'NEXT', 'NICE', 'NINE', 'NODE', 'NONE', 'NOON', 'NOTE', 'OATH', 'OKAY', 'ONCE', 'ONLY', 'ONTO', 'OPEN', 'OVER', 'PAGE', 'PAIN', 'PAIR', 'PALE', 'PARK', 'PART', 'PASS', 'PAST', 'PATH', 'PEAR', 'PLAN', 'PLAY', 'PLUS', 'POEM', 'POET', 'POLL', 'POND', 'PONY', 'POOL', 'POOR', 'PORK', 'PORT', 'POST', 'POUR', 'PRAY', 'PULL', 'PURE', 'PUSH', 'RACE', 'RAIN', 'READ', 'REAL', 'RELY', 'REST', 'RICE', 'RICH', 'RIDE', 'RING', 'RISE', 'ROAD', 'ROCK', 'ROLE', 'ROOF', 'ROOM', 'ROOT', 'ROPE', 'ROSE', 'RULE', 'SAFE', 'SAID', 'SALE', 'SALT', 'SAME', 'SAVE', 'SCAM', 'SEAL', 'SEAT', 'SEEK', 'SEEM', 'SEEN', 'SELF', 'SELL', 'SEND', 'SENT', 'SHED', 'SHIP', 'SHOP', 'SHOT', 'SHOW', 'SIGN', 'SILO', 'SING', 'SITE', 'SIZE', 'SKIN', 'SKIP', 'SLEW', 'SLOW', 'SNOW', 'SOAR', 'SOME', 'SONG', 'SOON', 'SORT', 'SOUL', 'STAR', 'STAY', 'STEP', 'STOP', 'SUCH', 'SUIT', 'SUNS', 'SURE', 'TAKE', 'TALK', 'TALL', 'TAPE', 'TASK', 'TEAM', 'TEAR', 'TELL', 'TERM', 'TEST', 'TEXT', 'THAN', 'THAT', 'THEM', 'THEN', 'THEY', 'THIN', 'THIS', 'THUS', 'TIDE', 'TIME', 'TINY', 'TIRE', 'TOLD', 'TOOK', 'TOOL', 'TOUR', 'TOWN', 'TREE', 'TRIP', 'TRUE', 'TURN', 'TYPE', 'UNIT', 'UPON', 'USED', 'USER', 'VARY', 'VERY', 'VIEW', 'VOTE', 'WAGE', 'WAIT', 'WAKE', 'WALK', 'WALL', 'WANT', 'WARM', 'WARN', 'WASH', 'WAVE', 'WAYS', 'WEAK', 'WEAR', 'WEEK', 'WELL', 'WENT', 'WERE', 'WHAT', 'WHEN', 'WHERE', 'WHIL', 'WHIP', 'WIDE', 'WIFE', 'WILD', 'WILL', 'WIND', 'WINE', 'WING', 'WISH', 'WITH', 'WOOD', 'WORD', 'WORK', 'YARD', 'YEAH', 'YEAR', 'YELL', 'YOUR', 'ZERO', 'ZINC', 'ZONE'];
+    
+// Helper function to get a random letter
+function getRandomLetter() {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    return letters.charAt(Math.floor(Math.random() * letters.length));
+}
+
+// Create a new bubble
+function createBubble() {
+    const x = Math.random() * (canvas.width - bubbleRadius * 2) + bubbleRadius;
+    const y = -bubbleRadius;
+    const dy = Math.random() * 0.5 + 0.2; // vertical speed
+    const letter = getRandomLetter();
+    bubbles.push({ x, y, dy, letter, isCollected: false });
+}
+
+// Draw the bubbles on the canvas
+function drawBubbles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    bubbles.forEach(bubble => {
+        if (!bubble.isCollected) {
+            ctx.beginPath();
+            ctx.arc(bubble.x, bubble.y, bubbleRadius, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(76, 175, 80, 0.5)';
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#4CAF50';
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.fillStyle = '#333';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(bubble.letter, bubble.x, bubble.y);
+        }
+    });
+}
+
+// Update the position of bubbles
+function updateBubbles() {
+    for (let i = bubbles.length - 1; i >= 0; i--) {
+        const bubble = bubbles[i];
+        bubble.y += bubble.dy;
+
+        // If a bubble goes off-screen, remove it
+        if (bubble.y > canvas.height + bubbleRadius) {
+            bubbles.splice(i, 1);
+        }
+    }
+}
+
+// Main game loop
+function gameLoop() {
+    updateBubbles();
+    drawBubbles();
+    requestAnimationFrame(gameLoop);
+}
+
+// Update the UI with collected letters
+function updateCollectedLettersUI() {
+    collectedLettersDiv.innerHTML = '';
+    collectedLetters.forEach((bubble, index) => {
+        const tile = document.createElement('div');
+        tile.className = 'letter-tile';
+        tile.textContent = bubble.letter;
+        tile.dataset.index = index;
+        tile.addEventListener('click', () => {
+            formedWord.push(bubble);
+            updateFormedWordUI();
+            collectedLetters.splice(index, 1);
+            updateCollectedLettersUI();
+        });
+        collectedLettersDiv.appendChild(tile);
+    });
+}
+
+// Update the UI with the word being formed
+function updateFormedWordUI() {
+    formedWordDiv.innerHTML = '';
+    formedWord.forEach(bubble => {
+        const tile = document.createElement('div');
+        tile.className = 'letter-tile';
+        tile.textContent = bubble.letter;
+        formedWordDiv.appendChild(tile);
+    });
+}
+
+// Handle clicks on the canvas to collect bubbles
+canvas.addEventListener('click', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = (event.clientX - rect.left)/rect.width*canvas.width;
+    const y = (event.clientY - rect.top)/rect.height*canvas.height;
+    for (const bubble of bubbles) {
+        if (!bubble.isCollected) {
+            const distance = Math.sqrt((x - bubble.x) ** 2 + (y - bubble.y) ** 2);
+            if (distance < bubbleRadius) {
+                bubble.isCollected = true;
+                collectedLetters.push(bubble);
+                updateCollectedLettersUI();
+                break; // Only collect one bubble per click
+            }
+        }
+    }
+});
+
+// Handle word submission
+submitBtn.addEventListener('click', () => {
+    const submittedWord = formedWord.map(b => b.letter).join('');
+
+    if (submittedWord.length !== 4) {
+        alert('Please form a 4-letter word.');
+        return;
+    }
+
+    if (!words.includes(submittedWord)) {
+        alert('That is not a valid 4-letter word. Try again!');
+        formedWord = [];
+        updateFormedWordUI();
+        return;
+    }
+
+    // If a valid word is submitted, remove the bubbles from the game
+    bubbles = bubbles.filter(bubble => !formedWord.includes(bubble));
+    formedWord = [];
+    score += 10;
+    scoreDisplay.textContent = `Score: ${score}`;
+    updateFormedWordUI();
+});
+
+// Handle clearing the formed word
+clearBtn.addEventListener('click', () => {
+    // Return letters from the formed word back to the collected letters
+    formedWord.forEach(bubble => collectedLetters.push(bubble));
+    formedWord = [];
+    updateFormedWordUI();
+    updateCollectedLettersUI();
+});
+
+// Start the bubble generation and game loop
+setInterval(createBubble, 2000);
+gameLoop();
+
+    </script>
+</body>
+</html>
