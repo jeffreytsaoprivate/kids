@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplication</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .grid-cell {
+            @apply p-1.5 sm:p-2 text-center border border-gray-200 cursor-pointer transition duration-150 ease-in-out font-bold text-lg sm:text-xl rounded-md;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            min-height: 40px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .grid-header {
+             min-height: 40px; 
+        }
+        .muted-product {
+            color: #d1d5db;
+        }
+        .axis-highlight {
+            @apply bg-yellow-200 text-gray-800 shadow-md;
+        }
+        .keypad-button {
+            @apply w-full h-16 sm:h-20 bg-white rounded-full shadow-lg hover:bg-indigo-100 transition duration-150 ease-in-out text-xl sm:text-2xl font-extrabold text-indigo-700;
+        }
+        #multiplication-grid {
+            gap: 4px; 
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-3 flex flex-col items-center"> 
+    <header class="w-full max-w-5xl text-center mb-4"> 
+        <h1 class="text-3xl font-extrabold text-indigo-700 mt-1 mb-1">
+            <span id="math-question">&nbsp;</span>
+        </h1>
+    </header>
+
+    <div class="flex flex-col lg:flex-row w-full max-w-5xl gap-4"> 
+
+        <div class="lg:w-2/3 bg-white p-3 sm:p-5 rounded-2xl shadow-xl border border-gray-100 flex justify-center items-center order-2 lg:order-1"> 
+            <div id="multiplication-grid" class="grid grid-cols-11 w-full"> 
+            </div>
+        </div>
+
+        <div class="lg:w-1/3 flex flex-col gap-4 order-1 lg:order-2">
+            
+            <div class="bg-white p-4 rounded-xl shadow-lg border border-indigo-100">
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between items-center text-gray-600">
+                        <span class="font-medium">Score</span>
+                        <span id="correct-count" class="text-2xl font-extrabold text-indigo-600">0 / 0</span>
+                    </div>
+
+                    <div class="flex justify-between items-center text-gray-600">
+                        <span class="font-medium">Time</span>
+                        <span id="timer" class="text-2xl font-extrabold text-indigo-600">0.0s</span>
+                    </div>
+
+                    <div class="flex justify-between items-center text-gray-600 pt-2 border-t">
+                        <span class="font-medium">🏆 High Score</span>
+                        <span id="high-score" class="text-2xl font-extrabold text-red-500">0% 0.0s</span>
+                    </div>
+                    <div class="flex justify-between items-center text-gray-600">
+                        <span class="font-medium">🔥 Daily Streak</span>
+                        <span id="streak-count" class="text-xl font-extrabold text-red-500">0</span>
+                    </div>
+                </div>
+                <button id="clear-high-score" onclick="clearHighScore()" class="w-full mt-4 py-2 bg-gray-300 text-gray-500 font-normal text-lg rounded-lg shadow-md hover:bg-grey-600 transition duration-200 ease-in-out disabled:bg-gray-400">Clear high score</button>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-lg border border-indigo-100">
+                <div class="grid grid-cols-3 gap-2"> 
+                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('1')">1</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('2')">2</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('3')">3</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('4')">4</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('5')">5</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('6')">6</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('7')">7</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('8')">8</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('9')">9</button>
+                    
+                    <button class="keypad-button h-10 rounded-lg bg-red-500 text-white hover:bg-red-600" onclick="handleKeypadInput('Backspace')">⌫</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('0')">0</button>
+                    <button id="enter-button" class="keypad-button h-10 rounded-lg bg-green-500 text-white hover:bg-green-600" onclick="checkAnswer()">ENTER</button>
+                </div>
+            </div>
+            <button id="start-button" onclick="startGame()" class="w-full mt-1 py-2 bg-green-500 text-white font-bold text-lg rounded-lg shadow-md hover:bg-green-600 transition duration-200 ease-in-out disabled:bg-gray-400">START</button>
+            
+
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- FIREBASE SETUP ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9k81iD2mzPuLKBl76d6sdcLWvguDBzcs",
+            authDomain: "kids-15b5a.firebaseapp.com",
+            projectId: "kids-15b5a",
+            storageBucket: "kids-15b5a.firebasestorage.app",
+            messagingSenderId: "350263998718",
+            appId: "1:350263998718:web:8c1d356caa2df0da99cdaf",
+            collectionName: 'multiply',
+        };
+        const fixedAppId = "1:350263998718:web:8c1d356caa2df0da99cdaf";
+
+        let app, db, auth;
+        let userId = null;
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    window.userId = userId;
+                } else {
+                    userId = crypto.randomUUID();
+                    window.userId = userId;
+                }
+                window.db = db;
+                if (window.initGame) window.initGame();
+            });
+
+            signInAnonymously(auth);
+
+        } catch (error) {
+            console.error("Firebase initialization failed:", error);
+        }
+
+        // --- GAME STATE VARIABLES ---
+        const GRID_SIZE = 10;
+        const TOTAL_QUESTIONS = 5;
+        let correctCount = 0;
+        let totalQuestionsAttempted = 0;
+        let startTime = null;
+        let timerInterval = null;
+        let gameActive = false;
+        let targetRow = -1;
+        let targetCol = -1;
+        let userAnswer = "";
+        let askedQuestions = []; 
+
+        // DOM Elements
+        const gridElement = document.getElementById('multiplication-grid');
+        const correctCountEl = document.getElementById('correct-count');
+        const timerEl = document.getElementById('timer');
+        const clearHighScoreButton = document.getElementById('clear-high-score');
+        const startButton = document.getElementById('start-button');
+        const streakCountEl = document.getElementById('streak-count');
+        const highScoreEl = document.getElementById('high-score');
+        const mathquestion = document.getElementById('math-question');
+
+        // --- FIREBASE PATH HELPERS ---
+        const getUserDocRef = (db, userId) => {
+            return doc(db, `artifacts/${fixedAppId}/public/data/${firebaseConfig.collectionName}/${userId}`);     
+        };
+
+        // --- STREAK LOGIC ---
+        async function loadAndCheckStreak() {
+            if (!window.db || !window.userId) return;
+
+            const docRef =  getUserDocRef(window.db, window.userId);
+            let streak = 0;
+            const today = new Date().toISOString().split('T')[0];
+            try {
+                const docSnap = await getDoc(docRef);
+                let lastVisitDate = null;
+                
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    streak = data.currentStreak || 0;
+                    lastVisitDate = data.lastVisitDate;
+
+                    if (lastVisitDate === today) {
+                        // Visited today, streak maintained
+                    } else if (lastVisitDate === new Date(Date.now() - 86400000).toISOString().split('T')[0]) {
+                        // Visited yesterday, increment streak
+                        streak += 1;
+                    } else {
+                        // Gap in visits, reset streak
+                        streak = 1;
+                    }
+                } else {
+                    // New user/doc, start streak
+                    streak = 1;
+                }
+            } catch (e) {
+                console.error("Error fetching streak:", e);
+            }
+            try {
+                await setDoc(docRef, { currentStreak: streak, lastVisitDate: today }, { merge: true });
+                streakCountEl.textContent = `${streak}`;
+            } catch (e) {
+                console.error("Error saving streak:", e);
+            }
+        }
+
+        // --- GAME INITIALIZATION & SETUP ---
+        function createGrid() {
+            gridElement.innerHTML = ''; 
+
+            gridElement.appendChild(document.createElement('div'));
+
+            // Column Headers (1 to 10)
+            for (let c = 1; c <= GRID_SIZE; c++) {
+                const header = document.createElement('div');
+                header.className = 'grid-cell grid-header round-lg bg-indigo-200 text-indigo-800 font-extrabold';
+                header.id = `col-header-${c}`;
+                header.textContent = c;
+                gridElement.appendChild(header);
+            }
+
+            // Row Headers and Product Cells
+            for (let r = 1; r <= GRID_SIZE; r++) {
+                const rowHeader = document.createElement('div');
+                rowHeader.className = 'grid-cell grid-header round-lg bg-indigo-200 text-indigo-800 font-extrabold';
+                rowHeader.id = `row-header-${r}`;
+                rowHeader.textContent = r;
+                gridElement.appendChild(rowHeader);
+
+                for (let c = 1; c <= GRID_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell muted-product bg-white';
+                    cell.id = `cell-${r}-${c}`;
+                    cell.textContent = r * c;
+                    gridElement.appendChild(cell);
+                }
+            }
+        }
+
+        window.initGame = function() {
+            createGrid();
+            loadAndCheckStreak();
+            getHighScore();
+            document.addEventListener('keydown', handleGlobalKeydown);
+        }
+
+        // --- GAME FLOW ---
+        window.startGame = function() {
+            if (gameActive) return;
+            createGrid();
+            
+            correctCount = 0;
+            askedQuestions = [];
+            gameActive = true;
+            userAnswer = "";
+            startTime = Date.now();
+            totalQuestionsAttempted = 0;
+            
+            startButton.textContent = "STOP";
+            startButton.setAttribute('onclick', 'stopGame()');
+            startButton.classList.remove('bg-green-500', 'hover:bg-green-600');
+            startButton.classList.add('bg-red-500', 'hover:bg-red-600');
+            clearHighScoreButton.disabled = true;
+            
+            correctCountEl.textContent = `${correctCount} / ${totalQuestionsAttempted}`;
+            timerEl.textContent = "0.0s";
+            
+            startTimer();
+            generateNewQuestion();
+        }
+
+        window.stopGame = function() {
+            if (!gameActive) return;
+            
+            gameActive = false;
+            clearInterval(timerInterval);
+
+            startButton.textContent = "START";
+            startButton.setAttribute('onclick', 'startGame()');
+            startButton.classList.remove('bg-red-500', 'hover:bg-red-600');
+            startButton.classList.add('bg-green-500', 'hover:bg-green-600');
+            clearHighScoreButton.disabled = false;
+            mathquestion.textContent = `Game stopped 🛑`;
+            clearCurrentHighlight();
+            createGrid();
+            loadAndCheckStreak(); 
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                const timeElapsed = (Date.now() - startTime) / 1000;
+                timerEl.textContent = timeElapsed.toFixed(1) + 's'; 
+            }, 100);
+        }
+
+        function generateNewQuestion() {
+            clearCurrentHighlight();
+            clearInput();
+            
+            if (totalQuestionsAttempted >= TOTAL_QUESTIONS) {
+                endGame();
+                return;
+            }
+
+            let r, c, questionKey;
+            do {
+                r = Math.floor(Math.random() * GRID_SIZE) + 1;
+                c = Math.floor(Math.random() * GRID_SIZE) + 1;
+                questionKey = `${Math.min(r, c)}x${Math.max(r, c)}`;
+            } while (askedQuestions.includes(questionKey));
+
+            targetRow = r;
+            targetCol = c;
+            askedQuestions.push(questionKey);
+            mathquestion.textContent = `Q${totalQuestionsAttempted+1}: What is ${questionKey}?`;
+
+            const cell = document.getElementById(`cell-${targetRow}-${targetCol}`);
+            if (cell) {
+                cell.textContent = ''; 
+            }
+            highlightTargetCell();
+        }
+
+        function highlightTargetCell() {
+            const cell = document.getElementById(`cell-${targetRow}-${targetCol}`);
+            
+            for (let i = 1; i <= GRID_SIZE; i++) {
+              let rowHeader = document.getElementById(`row-header-${i}`);
+              if (i==targetRow) {
+                rowHeader.classList.add('bg-indigo-800','text-white','font-extrabold');
+                rowHeader.classList.remove('bg-gray-100','text-indigo-800','font-normal');
+              } else {
+                rowHeader.classList.remove('bg-indigo-800','text-white','font-extrabold');
+                rowHeader.classList.add('bg-gray-100','text-indigo-800','font-normal');
+              }
+
+              let colHeader = document.getElementById(`col-header-${i}`);
+              if (i==targetCol) {
+                colHeader.classList.add('bg-indigo-800','text-white','font-extrabold');
+                colHeader.classList.remove('bg-gray-100','text-indigo-800','font-normal');
+              } else {
+                colHeader.classList.remove('bg-indigo-800','text-white','font-extrabold');
+                colHeader.classList.add('bg-gray-100','text-indigo-800','font-normal');
+              }
+            }
+            
+            for (let i = 1; i <= GRID_SIZE; i++) {
+                const rowCell = document.getElementById(`cell-${targetRow}-${i}`);
+                if (rowCell) {
+                    rowCell.classList.add('bg-indigo-100');
+                }
+                
+                const colCell = document.getElementById(`cell-${i}-${targetCol}`);
+                if (colCell) {
+                    colCell.classList.add('bg-indigo-100');
+                }
+            }
+
+            if (cell) {
+                cell.classList.remove('axis-highlight', 'bg-indigo-100');
+                cell.classList.add('bg-indigo-600','font-bold','text-white');
+                cell.classList.remove('muted-product');
+            }
+        }
+
+        function clearCurrentHighlight() {
+            if (targetRow > 0 && targetCol > 0) {
+                for (let i = 1; i <= GRID_SIZE; i++) {
+                    const rowCell = document.getElementById(`cell-${targetRow}-${i}`);
+                    if (rowCell) {
+                        rowCell.classList.remove('axis-highlight', 'bg-indigo-100', 'bg-indigo-200', 'bg-indigo-800', 'bg-indigo-600', 'font-bold','text-indigo-800','text-white');
+                        rowCell.classList.add('muted-product');
+                        rowCell.textContent = targetRow * i;
+                    }
+                    
+                    const colCell = document.getElementById(`cell-${i}-${targetCol}`);
+                    if (colCell) {
+                        colCell.classList.remove('axis-highlight', 'bg-indigo-100', 'bg-indigo-200', 'bg-indigo-800', 'bg-indigo-600', 'font-bold','text-indigo-800', 'text-white');
+                        colCell.classList.add('muted-product');
+                        colCell.textContent = i * targetCol;
+                    }
+                }
+            }
+        }
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(timerInterval);
+            const timeTaken = Date.now() - startTime; 
+
+            startButton.textContent = "START";
+            startButton.setAttribute('onclick', 'startGame()');
+            startButton.classList.remove('bg-red-500', 'hover:bg-red-600');
+            startButton.classList.add('bg-green-500', 'hover:bg-green-600');
+            clearHighScoreButton.disabled = false;
+            clearCurrentHighlight();
+            mathquestion.innerHTML='&nbsp;';
+
+            const formattedTime = (timeTaken / 1000).toFixed(2);
+            timerEl.textContent = formattedTime + 's';
+            
+            checkAndSaveHighScore(correctCount/totalQuestionsAttempted, timeTaken);
+            
+            createGrid();
+            loadAndCheckStreak(); 
+        }
+
+        // --- USER INTERACTION ---
+
+        function clearInput() {
+            userAnswer = "";
+        }
+
+        window.handleKeypadInput = function(input) {
+            if (!gameActive) return;
+
+            if (input === 'Backspace') {
+                userAnswer = userAnswer.slice(0, -1);
+            } else if (input.match(/[0-9]/)) {
+                if (userAnswer.length < 3) {
+                    userAnswer += input;
+                }
+            } else if (input === 'Enter') {
+                checkAnswer();
+                return;
+            }
+            
+            const cell = document.getElementById(`cell-${targetRow}-${targetCol}`);
+            if (cell) {
+                cell.textContent = userAnswer;
+            }
+        }
+
+        function handleGlobalKeydown(event) {
+            if (event.key.match(/[0-9]/) || event.key === 'Backspace' || event.key === 'Enter') {
+                handleKeypadInput(event.key);
+                event.preventDefault(); 
+            }
+        }
+
+        window.checkAnswer = function() {
+            if (!gameActive || userAnswer === "") return;
+
+            const correctProduct = targetRow * targetCol;
+            const userProduct = parseInt(userAnswer, 10);
+            
+            const cell = document.getElementById(`cell-${targetRow}-${targetCol}`);
+
+            totalQuestionsAttempted++;
+            if (userProduct === correctProduct) {
+                correctCount++;
+            }
+            correctCountEl.textContent = `${correctCount} / ${totalQuestionsAttempted}`;
+            
+            if (cell) {
+                cell.classList.remove('bg-indigo-100');
+                cell.classList.remove('axis-highlight');
+                cell.textContent = correctProduct;
+            }
+            
+            setTimeout(() => {
+                generateNewQuestion(); 
+            }, 200); 
+        }
+        createGrid(); 
+
+        // --- HIGH SCORE ---
+        async function getHighScore() {
+            if (!window.db || !window.userId) return;
+
+            const docRef =  getUserDocRef(window.db, window.userId);
+            try {
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    const bestScore = data.bestScore || 0;
+                    const bestTime = data.bestTime || Infinity;
+                    
+                    const formattedScore = (bestScore * 100).toFixed(0);
+                    const formattedTime = bestTime === Infinity ? 'N/A' : `${(bestTime / 1000).toFixed(1)}s`;
+                    highScoreEl.textContent = `${formattedScore}% ${formattedTime}`;
+                }
+            } catch (error) {
+                console.error("Error fetching high score:", error);
+                highScoreEl.textContent = 'Error';
+            }
+        }
+
+        async function checkAndSaveHighScore(correctScore, timeTakenMs) {
+            if (!window.db || !window.userId) return;
+
+            const docRef =  getUserDocRef(window.db, window.userId);
+            try {
+                const docSnap = await getDoc(docRef);
+                let bestScore = 0;
+                let bestTime = Infinity;
+                    
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    bestScore = data.bestScore || 0;
+                    bestTime = data.bestTime || Infinity;
+                    
+                    if (correctScore >= bestScore && timeTakenMs < bestTime) {
+                        bestScore = correctScore;
+                        bestTime = timeTakenMs;
+                        const newScoreData = {
+                            bestScore: bestScore,
+                            bestTime: bestTime,
+                            bestScoreTimestamp: Date.now(),
+                        };
+                        try {
+                            await setDoc(docRef, newScoreData, { merge: true });
+                            mathquestion.textContent = `New record 🏆`;
+                        } catch (e) {
+                            console.error("Error saving record:", e);
+                        }
+                    } else {
+                        mathquestion.textContent = `Your score was ${(correctScore * 100).toFixed(0)}%`;
+                    }
+                }
+
+                const formattedScore = (bestScore * 100).toFixed(0);
+                const formattedTime = bestTime === Infinity ? 'N/A' : `${(bestTime / 1000).toFixed(1)}s`;
+                highScoreEl.textContent = `${formattedScore}% ${formattedTime}`;
+                
+            } catch (error) {
+                console.error("Error fetching high score:", error);
+            }
+        }
+
+        window.clearHighScore = async function() {
+            if (!window.db || !window.userId) return;
+
+            const docRef = getUserDocRef(window.db, window.userId);
+
+            try {
+                const resetScoreData = {
+                    bestScore: 0,
+                    bestTime: Infinity,
+                    bestScoreTimestamp: Date.now(),
+                };
+                
+                await setDoc(docRef, resetScoreData, { merge: true });
+                
+                highScoreEl.textContent = `0% N/A`;
+                mathquestion.textContent = `High score cleared 🗑️`;
+                
+            } catch (e) {
+                console.error("Error clearing high score:", e);
+            }
+        }
+    </script>
+</body>
+</html>
