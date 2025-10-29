@@ -20,13 +20,13 @@
              min-height: 40px; 
         }
         .muted-product {
-            color: #d1d5db;
+            color: #c0c0c0;
         }
         .axis-highlight {
             @apply bg-yellow-200 text-gray-800 shadow-md;
         }
         .keypad-button {
-            @apply w-full h-16 sm:h-20 bg-white rounded-full shadow-lg hover:bg-indigo-100 transition duration-150 ease-in-out text-xl sm:text-2xl font-extrabold text-indigo-700;
+            @apply w-full h-16 sm:h-20 bg-white rounded-full shadow-lg hover:bg-gray-100 transition duration-150 ease-in-out text-xl sm:text-2xl font-extrabold text-gray-700;
         }
         #multiplication-grid {
             gap: 4px; 
@@ -34,31 +34,27 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen p-3 flex flex-col items-center"> 
-    <header class="w-full max-w-5xl text-center mb-4"> 
-        <h1 class="text-3xl font-extrabold text-indigo-700 mt-1 mb-1">
-            <span id="math-question">&nbsp;</span>
-        </h1>
-    </header>
-
-    <div class="flex flex-col lg:flex-row w-full max-w-5xl gap-4"> 
-
-        <div class="lg:w-2/3 bg-white p-3 sm:p-5 rounded-2xl shadow-xl border border-gray-100 flex justify-center items-center order-2 lg:order-1"> 
-            <div id="multiplication-grid" class="grid grid-cols-11 w-full"> 
+    <div class="flex flex-col lg:flex-row w-full gap-4"> 
+        <div class="flex flex-col w-full items-center">
+            <div class="w-full bg-white p-3 sm:p-5 rounded-2xl shadow-xl border border-gray-100 flex flex-col items-center order-2 lg:order-1">
+                <h1 class="text-3xl font-extrabold text-gray-600 mt-1 mb-1 pb-1">
+                    <span id="math-question">&nbsp;</span>
+                </h1>
+                <div id="multiplication-grid" class="grid grid-cols-11 w-full"> 
+                </div>
             </div>
         </div>
-
         <div class="lg:w-1/3 flex flex-col gap-4 order-1 lg:order-2">
-            
-            <div class="bg-white p-4 rounded-xl shadow-lg border border-indigo-100">
+            <div class="bg-white p-4 rounded-xl shadow-lg border border-gray-100">
                 <div class="space-y-2 text-sm">
                     <div class="flex justify-between items-center text-gray-600">
                         <span class="font-medium">Score</span>
-                        <span id="correct-count" class="text-2xl font-extrabold text-indigo-600">0 / 0</span>
+                        <span id="correct-count" class="text-2xl font-extrabold text-gray-600">0 / 0</span>
                     </div>
 
                     <div class="flex justify-between items-center text-gray-600">
                         <span class="font-medium">Time</span>
-                        <span id="timer" class="text-2xl font-extrabold text-indigo-600">0.0s</span>
+                        <span id="timer" class="text-2xl font-extrabold text-gray-600">0.0s</span>
                     </div>
 
                     <div class="flex justify-between items-center text-gray-600 pt-2 border-t">
@@ -72,20 +68,20 @@
                 </div>
                 <button id="clear-high-score" onclick="clearHighScore()" class="w-full mt-4 py-2 bg-gray-300 text-gray-500 font-normal text-lg rounded-lg shadow-md hover:bg-grey-600 transition duration-200 ease-in-out disabled:bg-gray-400">Clear high score</button>
             </div>
-            <div class="bg-white p-4 rounded-xl shadow-lg border border-indigo-100">
+            <div class="bg-white p-4 rounded-xl shadow-lg border border-gray-100">
                 <div class="grid grid-cols-3 gap-2"> 
-                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('1')">1</button>
-                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('2')">2</button>
-                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('3')">3</button>
-                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('4')">4</button>
-                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('5')">5</button>
-                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('6')">6</button>
-                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('7')">7</button>
-                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('8')">8</button>
-                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('9')">9</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-gray-300" onclick="handleKeypadInput('1')">1</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-gray-300" onclick="handleKeypadInput('2')">2</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-gray-300" onclick="handleKeypadInput('3')">3</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-gray-300" onclick="handleKeypadInput('4')">4</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-gray-300" onclick="handleKeypadInput('5')">5</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-gray-300" onclick="handleKeypadInput('6')">6</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-gray-300" onclick="handleKeypadInput('7')">7</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-gray-300" onclick="handleKeypadInput('8')">8</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-gray-300" onclick="handleKeypadInput('9')">9</button>
                     
                     <button class="keypad-button h-10 rounded-lg bg-red-500 text-white hover:bg-red-600" onclick="handleKeypadInput('Backspace')">⌫</button>
-                    <button class="keypad-button h-10 rounded-lg hover:bg-indigo-300" onclick="handleKeypadInput('0')">0</button>
+                    <button class="keypad-button h-10 rounded-lg hover:bg-gray-300" onclick="handleKeypadInput('0')">0</button>
                     <button id="enter-button" class="keypad-button h-10 rounded-lg bg-green-500 text-white hover:bg-green-600" onclick="checkAnswer()">ENTER</button>
                 </div>
             </div>
@@ -216,7 +212,7 @@
             // Column Headers (1 to 10)
             for (let c = 1; c <= GRID_SIZE; c++) {
                 const header = document.createElement('div');
-                header.className = 'grid-cell grid-header round-lg bg-indigo-200 text-indigo-800 font-extrabold';
+                header.className = 'grid-cell grid-header round-lg bg-yellow-800 text-white font-extrabold';
                 header.id = `col-header-${c}`;
                 header.textContent = c;
                 gridElement.appendChild(header);
@@ -225,7 +221,7 @@
             // Row Headers and Product Cells
             for (let r = 1; r <= GRID_SIZE; r++) {
                 const rowHeader = document.createElement('div');
-                rowHeader.className = 'grid-cell grid-header round-lg bg-indigo-200 text-indigo-800 font-extrabold';
+                rowHeader.className = 'grid-cell grid-header round-lg bg-blue-800 text-white font-extrabold';
                 rowHeader.id = `row-header-${r}`;
                 rowHeader.textContent = r;
                 gridElement.appendChild(rowHeader);
@@ -316,7 +312,7 @@
             targetRow = r;
             targetCol = c;
             askedQuestions.push(questionKey);
-            mathquestion.textContent = `Q${totalQuestionsAttempted+1}: What is ${questionKey}?`;
+            mathquestion.innerHTML = `Q${totalQuestionsAttempted+1}: What is <SPAN class="bg-blue-800 text-white">&nbsp;${r}&nbsp;</SPAN> x <SPAN class="bg-yellow-800 text-white">&nbsp;${c}&nbsp;</SPAN>?`;
 
             const cell = document.getElementById(`cell-${targetRow}-${targetCol}`);
             if (cell) {
@@ -331,38 +327,38 @@
             for (let i = 1; i <= GRID_SIZE; i++) {
               let rowHeader = document.getElementById(`row-header-${i}`);
               if (i==targetRow) {
-                rowHeader.classList.add('bg-indigo-800','text-white','font-extrabold');
-                rowHeader.classList.remove('bg-gray-100','text-indigo-800','font-normal');
+                rowHeader.classList.add('bg-blue-800','text-white','font-extrabold');
+                rowHeader.classList.remove('bg-gray-100','text-gray-800','font-normal');
               } else {
-                rowHeader.classList.remove('bg-indigo-800','text-white','font-extrabold');
-                rowHeader.classList.add('bg-gray-100','text-indigo-800','font-normal');
+                rowHeader.classList.remove('bg-blue-800','text-white','font-extrabold');
+                rowHeader.classList.add('bg-gray-100','text-gray-800','font-normal');
               }
 
               let colHeader = document.getElementById(`col-header-${i}`);
               if (i==targetCol) {
-                colHeader.classList.add('bg-indigo-800','text-white','font-extrabold');
-                colHeader.classList.remove('bg-gray-100','text-indigo-800','font-normal');
+                colHeader.classList.add('bg-yellow-800','text-white','font-extrabold');
+                colHeader.classList.remove('bg-gray-100','text-gray-800','font-normal');
               } else {
-                colHeader.classList.remove('bg-indigo-800','text-white','font-extrabold');
-                colHeader.classList.add('bg-gray-100','text-indigo-800','font-normal');
+                colHeader.classList.remove('bg-yellow-800','text-white','font-extrabold');
+                colHeader.classList.add('bg-gray-100','text-gray-800','font-normal');
               }
             }
             
             for (let i = 1; i <= GRID_SIZE; i++) {
                 const rowCell = document.getElementById(`cell-${targetRow}-${i}`);
                 if (rowCell) {
-                    rowCell.classList.add('bg-indigo-100');
+                    rowCell.classList.add('bg-blue-100');
                 }
                 
                 const colCell = document.getElementById(`cell-${i}-${targetCol}`);
                 if (colCell) {
-                    colCell.classList.add('bg-indigo-100');
+                    colCell.classList.add('bg-yellow-100');
                 }
             }
 
             if (cell) {
-                cell.classList.remove('axis-highlight', 'bg-indigo-100');
-                cell.classList.add('bg-indigo-600','font-bold','text-white');
+                cell.classList.remove('axis-highlight', 'bg-blue-100', 'bg-yellow-100');
+                cell.classList.add('bg-green-600','font-bold','text-white');
                 cell.classList.remove('muted-product');
             }
         }
@@ -372,14 +368,14 @@
                 for (let i = 1; i <= GRID_SIZE; i++) {
                     const rowCell = document.getElementById(`cell-${targetRow}-${i}`);
                     if (rowCell) {
-                        rowCell.classList.remove('axis-highlight', 'bg-indigo-100', 'bg-indigo-200', 'bg-indigo-800', 'bg-indigo-600', 'font-bold','text-indigo-800','text-white');
+                        rowCell.classList.remove('axis-highlight', 'bg-blue-100', 'bg-yellow-100', 'bg-green-600','bg-gray-100', 'font-bold','text-gray-800','text-white');
                         rowCell.classList.add('muted-product');
                         rowCell.textContent = targetRow * i;
                     }
                     
                     const colCell = document.getElementById(`cell-${i}-${targetCol}`);
                     if (colCell) {
-                        colCell.classList.remove('axis-highlight', 'bg-indigo-100', 'bg-indigo-200', 'bg-indigo-800', 'bg-indigo-600', 'font-bold','text-indigo-800', 'text-white');
+                        colCell.classList.remove('axis-highlight', 'bg-blue-100', 'bg-yellow-100', 'bg-green-600', 'bg-gray-100', 'font-bold','text-gray-800', 'text-white');
                         colCell.classList.add('muted-product');
                         colCell.textContent = i * targetCol;
                     }
@@ -457,7 +453,7 @@
             correctCountEl.textContent = `${correctCount} / ${totalQuestionsAttempted}`;
             
             if (cell) {
-                cell.classList.remove('bg-indigo-100');
+                cell.classList.remove('bg-gray-100');
                 cell.classList.remove('axis-highlight');
                 cell.textContent = correctProduct;
             }
