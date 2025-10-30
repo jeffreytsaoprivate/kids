@@ -169,7 +169,14 @@
 
             const docRef =  getUserDocRef(window.db, window.userId);
             let streak = 0;
-            const today = new Date().toISOString().split('T')[0];
+            
+            // Get today's date in YYYY-MM-DD format in local time zone
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const today = `${year}-${month}-${day}`;
+            
             try {
                 const docSnap = await getDoc(docRef);
                 let lastVisitDate = null;
