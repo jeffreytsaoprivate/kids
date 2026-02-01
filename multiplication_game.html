@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Times Table Fun!</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Fredoka+One&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --card-bg: #ffffff;
+    --accent1: #e94560;
+    --accent2: #f5a623;
+    --accent3: #27ae60;
+    --accent4: #3498db;
+    --text: #2c3e50;
+    --text-muted: #7f8c8d;
+    --border: #dde2e8;
+  }
+
+  * {
+    margin: 0; padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 10px 30px;
+    overflow-x: hidden;
+    user-select: none;
+  }
+
+  /* --- TITLE --- */
+  h1 {
+    font-family: 'Fredoka One', cursive;
+    font-size: 2.4rem;
+    background: linear-gradient(135deg, var(--accent2), var(--accent1));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 6px;
+    text-align: center;
+    letter-spacing: 1px;
+  }
+
+  .subtitle {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-bottom: 18px;
+    text-align: center;
+  }
+
+  /* --- NUMBER PICKER --- */
+  .picker-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+
+  .picker-label {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--accent2);
+  }
+
+  .picker-btn {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent2);
+    color: #fff;
+    font-size: 1.4rem;
+    font-weight: 900;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s, background 0.15s;
+    box-shadow: 0 3px 8px rgba(245,166,35,0.35);
+  }
+  .picker-btn:hover { transform: scale(1.12); background: #e0952a; }
+  .picker-btn:active { transform: scale(0.92); }
+  .picker-btn.locked { opacity: 0.3; cursor: default; box-shadow: none; }
+  .picker-btn.locked:hover { transform: none; background: var(--accent2); }
+
+  .picker-value {
+    font-family: 'Fredoka One', cursive;
+    font-size: 2.2rem;
+    color: var(--accent2);
+    min-width: 42px;
+    text-align: center;
+  }
+
+  /* --- RESET BUTTON --- */
+  .reset-btn {
+    background: none;
+    border: 1.5px solid var(--border);
+    border-radius: 50px;
+    color: var(--text-muted);
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 5px 14px;
+    cursor: pointer;
+    margin-bottom: 16px;
+    letter-spacing: 0.4px;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .reset-btn:hover {
+    border-color: var(--accent1);
+    color: var(--accent1);
+    background: rgba(233,69,96,0.06);
+  }
+
+  /* --- TABLE GRID --- */
+  .table-container {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 18px 22px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+    border: 1px solid var(--border);
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    min-height: 42px;
+  }
+  .row:last-child { border-bottom: none; }
+
+  .row-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+    min-width: 140px;
+  }
+
+  .row-left .num { color: var(--text); font-size: 1.25rem; }
+  .row-left .times { color: var(--text-muted); }
+  .row-left .chosen { color: var(--accent2); font-size: 1.25rem; }
+  .row-left .eq { color: var(--text-muted); }
+
+  .answer-display {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.45rem;
+    color: var(--accent3);
+    min-width: 56px;
+    text-align: right;
+    transition: color 0.2s;
+  }
+
+  /* --- HIDDEN ROW (hand covers) --- */
+  .row.hidden-row .answer-display {
+    visibility: hidden;
+  }
+
+  /* --- HAND SVG WRAPPER --- */
+  .hand-wrapper {
+    position: absolute;
+    right: -28px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 90px;
+    height: 68px;
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  /* --- MAIN PLAY AREA (table left, controls right) --- */
+  .play-area {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    width: 100%;
+    max-width: 720px;
+    justify-content: center;
+  }
+
+  /* --- RIGHT PANEL --- */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding-top: 6px;
+  }
+
+  /* --- INPUT AREA --- */
+  .input-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .input-box {
+    background: #f7f9fc;
+    border: 2px solid var(--accent4);
+    border-radius: 12px;
+    width: 100px; height: 48px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.7rem;
+    color: var(--accent3);
+    text-align: center;
+    outline: none;
+    letter-spacing: 2px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .input-box:focus { box-shadow: 0 0 10px rgba(52,152,219,0.3); }
+  .input-box.correct { border-color: var(--accent3); box-shadow: 0 0 12px rgba(39,174,96,0.3); }
+  .input-box.wrong   { border-color: var(--accent1); box-shadow: 0 0 12px rgba(233,69,96,0.3); animation: shake 0.3s; }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25%     { transform: translateX(-6px); }
+    75%     { transform: translateX(6px); }
+  }
+
+  /* --- 3×4 KEYBOARD GRID --- */
+  .keyboard {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+    width: 160px;
+  }
+
+  .key {
+    height: 48px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.1s, background 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  }
+  .key:hover { background: #eef2f7; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+  .key:active { transform: translateY(1px) scale(0.93); }
+
+  .key.back  { background: var(--accent1); border-color: var(--accent1); color: #fff; font-size: 1rem; font-weight: 900; }
+  .key.back:hover { background: #d63a53; border-color: #d63a53; }
+  .key.enter { background: var(--accent3); border-color: var(--accent3); color: #fff; font-size: 0.88rem; font-weight: 900; }
+  .key.enter:hover { background: #229954; border-color: #229954; }
+
+  /* --- FEEDBACK --- */
+  .feedback {
+    height: 28px;
+    font-weight: 700;
+    font-size: 1.05rem;
+    text-align: center;
+    transition: color 0.3s;
+    width: 160px;
+  }
+  .feedback.correct { color: var(--accent3); }
+  .feedback.wrong   { color: var(--accent1); }
+
+  /* --- CELEBRATION OVERLAY --- */
+  .celebration {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 100;
+    align-items: center; justify-content: center;
+    flex-direction: column;
+    animation: fadeIn 0.3s;
+  }
+  .celebration.show { display: flex; }
+
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+  .cel-card {
+    background: var(--card-bg);
+    border-radius: 24px;
+    padding: 36px 44px;
+    text-align: center;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    animation: popIn 0.35s cubic-bezier(.175,.885,.32,1.275);
+  }
+  @keyframes popIn { from { transform: scale(0.6); opacity:0; } to { transform: scale(1); opacity:1; } }
+
+  .cel-emoji { font-size: 3.2rem; margin-bottom: 10px; }
+  .cel-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.9rem;
+    color: var(--accent2);
+    margin-bottom: 6px;
+  }
+  .cel-sub { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 18px; }
+
+  .cel-btn {
+    background: var(--accent2);
+    border: none;
+    color: #fff;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    padding: 10px 28px;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: transform 0.15s, background 0.15s;
+    box-shadow: 0 4px 12px rgba(245,166,35,0.35);
+  }
+  .cel-btn:hover { transform: scale(1.08); background: #e0952a; }
+
+  /* --- CONFETTI --- */
+  .confetti-piece {
+    position: fixed;
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 99;
+    animation: confettiFall 2.2s ease-in forwards;
+  }
+  @keyframes confettiFall {
+    0%   { transform: translateY(0) rotate(0deg); opacity:1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity:0; }
+  }
+
+  /* --- SCORE BAR --- */
+  .score-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 720px;
+    margin-bottom: 14px;
+    padding: 0 4px;
+  }
+
+  .score-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .score-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-muted);
+    font-weight: 700;
+  }
+  .score-value {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.5rem;
+    color: var(--text);
+  }
+  .score-value.hs { color: var(--accent2); }
+
+  .question-badge {
+    background: rgba(52,152,219,0.1);
+    border: 1px solid rgba(52,152,219,0.3);
+    border-radius: 50px;
+    padding: 4px 14px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--accent4);
+    letter-spacing: 0.5px;
+  }
+
+  /* --- PROGRESS DOTS --- */
+  .progress-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.3s, transform 0.2s;
+  }
+  .dot.done  { background: var(--accent3); }
+  .dot.active { background: var(--accent4); transform: scale(1.25); }
+
+  /* --- END ROUND OVERLAY --- */
+  .end-round .cel-emoji { font-size: 3.6rem; }
+  .end-round .cel-title { font-size: 2rem; }
+
+  .final-score-display {
+    font-family: 'Fredoka One', cursive;
+    font-size: 3.2rem;
+    color: var(--accent3);
+    margin: 8px 0 4px;
+  }
+  .final-score-label {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .new-hs-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--accent2), var(--accent1));
+    color: #fff;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.82rem;
+    padding: 3px 12px;
+    border-radius: 50px;
+    margin-bottom: 14px;
+    letter-spacing: 0.5px;
+    animation: pulse 0.6s ease infinite alternate;
+  }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.08); } }
+
+  /* --- HAND SVG --- */
+  .hand-svg { width:100%; height:100%; }
+</style>
+</head>
+<body>
+
+<h1>✕ Times Table Fun!</h1>
+<p class="subtitle">Pick a number, then find the hidden answer!</p>
+
+<!-- Score Bar -->
+<div class="score-bar">
+  <div class="score-item">
+    <span class="score-label">Score</span>
+    <span class="score-value" id="scoreDisplay">0</span>
+  </div>
+  <div class="score-item">
+    <span class="question-badge" id="questionBadge">Question 1 / 10</span>
+  </div>
+  <div class="score-item">
+    <span class="score-label">Best</span>
+    <span class="score-value hs" id="highScoreDisplay">0</span>
+  </div>
+</div>
+
+<!-- Progress Dots -->
+<div class="progress-dots" id="progressDots"></div>
+
+<!-- Number Picker -->
+<div class="picker-section">
+  <span class="picker-label">Number:</span>
+  <button class="picker-btn" id="btnDown">−</button>
+  <span class="picker-value" id="pickerValue">5</span>
+  <button class="picker-btn" id="btnUp">+</button>
+</div>
+
+<!-- Play Area: Table left, Controls right -->
+<div class="play-area">
+  <!-- Table -->
+  <div class="table-container" id="tableContainer"></div>
+
+  <!-- Right Panel: input + keyboard + feedback -->
+  <div class="right-panel">
+    <div class="input-area">
+      <input type="text" class="input-box" id="inputBox" maxlength="3" autocomplete="off" readonly />
+    </div>
+    <div class="keyboard" id="keyboard"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="reset-btn" id="resetBtn">↺ Reset Game</button>
+  </div>
+</div>
+
+<!-- End of Round -->
+<div class="celebration end-round" id="endRound">
+  <div class="cel-card">
+    <div class="cel-emoji" id="endEmoji">🏆</div>
+    <div class="cel-title" id="endTitle">Round Complete!</div>
+    <div class="final-score-display" id="finalScoreDisplay">0 / 10</div>
+    <div class="final-score-label">correct answers</div>
+    <div id="newHsBadge" class="new-hs-badge" style="display:none;">⭐ New High Score!</div>
+    <div class="cel-sub" id="endMessage"></div>
+    <button class="cel-btn" id="endPlayAgain">Play Again</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const TOTAL_QUESTIONS = 10;
+
+  let chosen       = 5;
+  let hiddenIndex  = 0;
+  let solved       = false;
+  let score        = 0;
+  let questionNum  = 0; // 0-based index into the round
+  let highScore    = 0;
+  let roundActive  = false;
+
+  /* --- DOM refs --- */
+  const pickerValue      = document.getElementById('pickerValue');
+  const btnUp            = document.getElementById('btnUp');
+  const btnDown          = document.getElementById('btnDown');
+  const tableContainer   = document.getElementById('tableContainer');
+  const inputBox         = document.getElementById('inputBox');
+  const feedback         = document.getElementById('feedback');
+  const endRound         = document.getElementById('endRound');
+  const endEmoji         = document.getElementById('endEmoji');
+  const endTitle         = document.getElementById('endTitle');
+  const finalScoreDisplay= document.getElementById('finalScoreDisplay');
+  const newHsBadge       = document.getElementById('newHsBadge');
+  const endMessage       = document.getElementById('endMessage');
+  const endPlayAgain     = document.getElementById('endPlayAgain');
+  const scoreDisplay     = document.getElementById('scoreDisplay');
+  const highScoreDisplay = document.getElementById('highScoreDisplay');
+  const questionBadge    = document.getElementById('questionBadge');
+  const progressDots     = document.getElementById('progressDots');
+  const resetBtn         = document.getElementById('resetBtn');
+
+  /* --- RESET BUTTON --- */
+  resetBtn.addEventListener('click', () => {
+    endRound.classList.remove('show');
+    startRound();
+  });
+
+  /* --- LOAD HIGH SCORE --- */
+  async function loadHighScore(){
+    try {
+      const result = await window.storage.get('multiplication_highscore');
+      if(result && result.value) highScore = parseInt(result.value, 10) || 0;
+    } catch(e){ highScore = 0; }
+    highScoreDisplay.textContent = highScore;
+  }
+
+  async function saveHighScore(){
+    try { await window.storage.set('multiplication_highscore', String(highScore)); } catch(e){}
+  }
+
+  btnUp.addEventListener('click', () => {
+    if(chosen < 10){ chosen++; render(); }
+  });
+  btnDown.addEventListener('click', () => {
+    if(chosen > 1){ chosen--; render(); }
+  });
+
+  /* --- KEYBOARD BUILD --- */
+  const keys = ['1','2','3','4','5','6','7','8','9','⌫','0','✓'];
+  const keyboard = document.getElementById('keyboard');
+  keys.forEach(k => {
+    const btn = document.createElement('button');
+    btn.className = 'key' + (k==='✓' ? ' enter' : k==='⌫' ? ' back' : '');
+    btn.textContent = k;
+    btn.addEventListener('click', () => handleKey(k));
+    keyboard.appendChild(btn);
+  });
+
+  /* --- KEY HANDLER --- */
+  function handleKey(k){
+    if(solved || checking) return;
+    if(k === '⌫'){
+      inputBox.value = inputBox.value.slice(0,-1);
+      resetStyle();
+    } else if(k === '✓'){
+      checkAnswer();
+    } else {
+      if(inputBox.value.length < 3) inputBox.value += k;
+      resetStyle();
+    }
+  }
+
+  document.addEventListener('keydown', e => {
+    if(e.key >= '0' && e.key <= '9') handleKey(e.key);
+    else if(e.key === 'Backspace') handleKey('⌫');
+    else if(e.key === 'Enter') handleKey('✓');
+  });
+
+  /* --- CHECK --- */
+  let checking = false;
+
+  function checkAnswer(){
+    if(checking || solved) return;
+    const correct = chosen * (hiddenIndex + 1);
+    const guess   = parseInt(inputBox.value, 10);
+    if(isNaN(guess) || inputBox.value === ''){
+      feedback.textContent = 'Type a number first!';
+      feedback.className = 'feedback wrong';
+      return;
+    }
+    checking = true;
+    if(guess === correct){
+      inputBox.classList.add('correct');
+      feedback.textContent = '🌟 Correct!';
+      feedback.className = 'feedback correct';
+      solved = true;
+      score++;
+      scoreDisplay.textContent = score;
+
+      // reveal answer
+      const rows = tableContainer.querySelectorAll('.row');
+      rows[hiddenIndex].classList.remove('hidden-row');
+      rows[hiddenIndex].querySelector('.hand-wrapper').style.display = 'none';
+
+      // mark dot as done
+      updateDots();
+
+      // auto-advance after short delay
+      setTimeout(() => {
+        checking = false;
+        if(questionNum >= TOTAL_QUESTIONS - 1){
+          showEndRound();
+        } else {
+          advanceQuestion();
+        }
+      }, 1200);
+    } else {
+      inputBox.classList.add('wrong');
+      feedback.textContent = '❌ Not quite';
+      feedback.className = 'feedback wrong';
+      setTimeout(() => {
+        checking = false;
+        if(questionNum >= TOTAL_QUESTIONS - 1){
+          showEndRound();
+        } else {
+          advanceQuestion();
+        }
+      }, 1200);
+    }
+  }
+
+  function resetStyle(){
+    inputBox.classList.remove('correct','wrong');
+    feedback.textContent = '';
+    feedback.className = 'feedback';
+  }
+
+  /* --- END OF ROUND --- */
+  async function showEndRound(){
+    roundActive = false;
+    const isNewHs = score > highScore;
+    if(isNewHs){
+      highScore = score;
+      highScoreDisplay.textContent = highScore;
+      await saveHighScore();
+    }
+
+    finalScoreDisplay.textContent = score + ' / ' + TOTAL_QUESTIONS;
+    newHsBadge.style.display = isNewHs ? 'inline-block' : 'none';
+
+    // pick emoji + title + message based on score
+    if(score === 10){
+      endEmoji.textContent   = '🏆';
+      endTitle.textContent   = 'Perfect Score!';
+      endMessage.textContent = 'You are a multiplication master!';
+    } else if(score >= 7){
+      endEmoji.textContent   = '🌟';
+      endTitle.textContent   = 'Great Job!';
+      endMessage.textContent = 'Almost perfect — keep it up!';
+    } else if(score >= 4){
+      endEmoji.textContent   = '👍';
+      endTitle.textContent   = 'Nice Try!';
+      endMessage.textContent = 'A little more practice and you\'ll ace it!';
+    } else {
+      endEmoji.textContent   = '💪';
+      endTitle.textContent   = 'Keep Going!';
+      endMessage.textContent = 'Don\'t give up — you\'ll get there!';
+    }
+
+    endRound.classList.add('show');
+    spawnConfetti();
+  }
+
+  endPlayAgain.addEventListener('click', () => {
+    endRound.classList.remove('show');
+    startRound();
+  });
+
+  /* --- CONFETTI --- */
+  function spawnConfetti(){
+    const colors = ['#e94560','#f5a623','#50c878','#5dade2','#9b59b6','#f39c12'];
+    for(let i = 0; i < 55; i++){
+      const p = document.createElement('div');
+      p.className = 'confetti-piece';
+      p.style.left = Math.random()*100 + 'vw';
+      p.style.top  = '-12px';
+      p.style.background = colors[Math.floor(Math.random()*colors.length)];
+      p.style.animationDelay = Math.random()*0.5 + 's';
+      p.style.width  = (6 + Math.random()*8) + 'px';
+      p.style.height = (6 + Math.random()*8) + 'px';
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 2800);
+    }
+  }
+
+  /* --- ROUND / QUESTION MANAGEMENT --- */
+  function startRound(){
+    score       = 0;
+    questionNum = 0;
+    roundActive = true;
+    scoreDisplay.textContent = '0';
+    newQuestion();
+  }
+
+  function advanceQuestion(){
+    questionNum++;
+    newQuestion();
+  }
+
+  function newQuestion(){
+    hiddenIndex = Math.floor(Math.random() * 10);
+    solved      = false;
+    checking    = false;
+    inputBox.value = '';
+    resetStyle();
+    questionBadge.textContent = 'Question ' + (questionNum + 1) + ' / ' + TOTAL_QUESTIONS;
+    updateDots();
+    render();
+  }
+
+  /* --- PROGRESS DOTS --- */
+  function buildDots(){
+    progressDots.innerHTML = '';
+    for(let i = 0; i < TOTAL_QUESTIONS; i++){
+      const d = document.createElement('div');
+      d.className = 'dot';
+      d.id = 'dot-' + i;
+      progressDots.appendChild(d);
+    }
+  }
+
+  function updateDots(){
+    for(let i = 0; i < TOTAL_QUESTIONS; i++){
+      const d = document.getElementById('dot-' + i);
+      if(!d) continue;
+      d.className = 'dot';
+      if(i < questionNum) d.classList.add('done');
+      else if(i === questionNum){
+        if(solved) d.classList.add('done');
+        else d.classList.add('active');
+      }
+    }
+  }
+
+  /* --- RENDER TABLE --- */
+  function render(){
+    pickerValue.textContent = chosen;
+    tableContainer.innerHTML = '';
+    for(let i = 1; i <= 10; i++){
+      const row = document.createElement('div');
+      row.className = 'row' + (i-1 === hiddenIndex ? ' hidden-row' : '');
+
+      const left = document.createElement('div');
+      left.className = 'row-left';
+      left.innerHTML =
+        `<span class="num">${i}</span>
+         <span class="times">×</span>
+         <span class="chosen">${chosen}</span>
+         <span class="eq">=</span>`;
+      row.appendChild(left);
+
+      const ans = document.createElement('div');
+      ans.className = 'answer-display';
+      ans.textContent = i * chosen;
+      row.appendChild(ans);
+
+      if(i-1 === hiddenIndex){
+        const hw = document.createElement('div');
+        hw.className = 'hand-wrapper';
+        hw.innerHTML = handSVG();
+        row.appendChild(hw);
+      }
+
+      tableContainer.appendChild(row);
+    }
+  }
+
+  /* --- HAND SVG --- */
+  function handSVG(){
+    return `<svg class="hand-svg" viewBox="0 0 90 68" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="skinG" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#f0c8a0"/>
+          <stop offset="100%" stop-color="#d2a679"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="52" cy="48" rx="28" ry="20" fill="url(#skinG)" />
+      <ellipse cx="24" cy="42" rx="8" ry="12" fill="#e8bFA0" transform="rotate(-15 24 42)"/>
+      <rect x="30" y="8" width="11" height="28" rx="5.5" fill="#ecc9a5" transform="rotate(5 35 22)"/>
+      <rect x="42" y="4" width="11" height="30" rx="5.5" fill="#f0c8a0" transform="rotate(0 47 19)"/>
+      <rect x="54" y="8" width="10" height="27" rx="5" fill="#ecc9a5" transform="rotate(-4 59 21)"/>
+      <rect x="65" y="14" width="9" height="22" rx="4.5" fill="#e8bFA0" transform="rotate(-8 69 25)"/>
+      <ellipse cx="52" cy="60" rx="26" ry="6" fill="rgba(0,0,0,0.18)"/>
+    </svg>`;
+  }
+
+  /* --- INIT --- */
+  async function init(){
+    await loadHighScore();
+    buildDots();
+    startRound();
+  }
+  init();
+
+})();
+</script>
+</body>
+</html>
