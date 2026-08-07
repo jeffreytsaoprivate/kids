@@ -3,35 +3,34 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>SkyMath Delivery 2099 — Multiplication Drone Game</title>
+<title>SkyMath Delivery — Multiplication Drone Game</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Baloo+2:wght@600;700;800&family=Orbitron:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --neon-cyan:#00eaff;
-    --neon-pink:#ff2ea6;
-    --neon-purple:#9b5cff;
-    --neon-yellow:#ffe74c;
-    --neon-green:#39ff9d;
-    --ink:#eaf6ff;
-    --muted:#93a8c2;
-    --card:rgba(14,9,26,.86);
-    --card-border:rgba(0,234,255,.4);
-    --shadow: 0 0 22px rgba(0,234,255,.18), 0 10px 28px rgba(0,0,0,.55);
+    --sky-top:#3aa9e0;
+    --sky-mid:#8fd7f0;
+    --sun:#ffd23f;
+    --coral:#ff6b5b;
+    --leaf:#4fbf5f;
+    --ink:#1f2933;
+    --card:#fffdf7;
+    --card-border:#e9dfc8;
+    --shadow: 0 10px 26px rgba(20,40,60,.28);
   }
   *{box-sizing:border-box;}
   html,body{
     margin:0; padding:0; width:100%; height:100%; overflow:hidden;
     font-family:'Baloo 2','Fredoka',sans-serif; color:var(--ink);
-    background:#05030c;
+    background:#1a2a3a;
     -webkit-user-select:none; user-select:none;
   }
   #canvas-wrap{position:fixed; inset:0;}
-  canvas#three-canvas{display:block; width:100%; height:100%; touch-action:none; filter:contrast(1.15) saturate(1.35) brightness(1.04) hue-rotate(-4deg);}
+  canvas#three-canvas{display:block; width:100%; height:100%; touch-action:none; filter:contrast(1.07) saturate(1.14) brightness(1.02);}
 
   #vignette{
     position:fixed; inset:0; z-index:6; pointer-events:none;
-    background:radial-gradient(ellipse at 50% 46%, rgba(0,0,0,0) 38%, rgba(20,5,45,0.38) 84%, rgba(4,2,14,0.68) 100%);
+    background:radial-gradient(ellipse at 50% 46%, rgba(0,0,0,0) 45%, rgba(10,18,28,0.28) 88%, rgba(6,12,20,0.5) 100%);
   }
 
   /* ---------- Top HUD ---------- */
@@ -41,144 +40,139 @@
     pointer-events:none; z-index:20; width:min(92vw,560px);
   }
   #problemCard{
-    background:linear-gradient(180deg,rgba(20,12,38,.92),rgba(28,10,42,.92));
-    border:2px solid var(--neon-cyan);
-    box-shadow:0 0 18px rgba(0,234,255,.55), 0 0 40px rgba(0,234,255,.2), var(--shadow);
-    border-radius:16px; padding:10px 26px;
+    background:linear-gradient(180deg,#fffdf7,#fff3da);
+    border:3px solid var(--card-border);
+    border-radius:20px; padding:10px 26px;
+    box-shadow:var(--shadow);
     font-family:'Fredoka',sans-serif; font-weight:700;
     font-size:clamp(22px,4.4vw,34px);
-    color:var(--neon-cyan);
-    text-shadow:0 0 10px rgba(0,234,255,.85), 0 0 22px rgba(0,234,255,.4);
+    color:var(--ink);
     display:flex; align-items:center; gap:10px;
     transition:transform .18s ease;
   }
-  #problemCard .icon{font-size:1.1em; text-shadow:none;}
+  #problemCard .icon{font-size:1.1em;}
   #problemCard.hidden{opacity:0; transform:translateY(-14px) scale(.9);}
   #msgBanner{
     min-height:38px;
-    background:rgba(10,6,20,.85); color:var(--ink);
-    border:1px solid rgba(255,255,255,.12);
-    padding:8px 22px; border-radius:14px;
+    background:rgba(20,30,40,.82); color:#fff;
+    padding:8px 22px; border-radius:16px;
     font-weight:600; font-size:clamp(14px,3vw,19px);
     opacity:0; transform:translateY(-6px);
     transition:opacity .25s ease, transform .25s ease;
     text-align:center;
   }
   #msgBanner.show{opacity:1; transform:translateY(0);}
-  #msgBanner.good{background:rgba(10,30,26,.92); border-color:var(--neon-green); box-shadow:0 0 16px rgba(57,255,157,.5); color:#c9ffe6;}
-  #msgBanner.bad{background:rgba(35,8,24,.92); border-color:var(--neon-pink); box-shadow:0 0 16px rgba(255,46,166,.5); color:#ffd6ee;}
-  #msgBanner.call{background:rgba(38,30,4,.92); border-color:var(--neon-yellow); box-shadow:0 0 16px rgba(255,231,76,.5); color:#fff4c2;}
-  #msgBanner.info{background:rgba(10,16,38,.92); border-color:var(--neon-purple); box-shadow:0 0 16px rgba(155,92,255,.5); color:#e2d6ff;}
+  #msgBanner.good{background:rgba(79,191,95,.92);}
+  #msgBanner.bad{background:rgba(255,107,91,.92);}
+  #msgBanner.call{background:rgba(255,180,50,.95); color:#3a2400;}
+  #msgBanner.info{background:rgba(62,111,224,.92);}
 
   /* ---------- Score ---------- */
   #scoreBox{
     position:fixed; top:16px; right:16px; z-index:20;
-    background:var(--card); border:2px solid var(--card-border);
-    border-radius:14px; padding:8px 16px; box-shadow:var(--shadow);
-    font-family:'Orbitron',sans-serif; font-weight:700; font-size:18px;
-    color:var(--neon-cyan); text-shadow:0 0 8px rgba(0,234,255,.7);
+    background:var(--card); border:3px solid var(--card-border);
+    border-radius:16px; padding:8px 16px; box-shadow:var(--shadow);
+    font-family:'Fredoka',sans-serif; font-weight:700; font-size:18px;
     display:flex; align-items:center; gap:8px;
   }
-  #scoreBox .star{font-size:22px; text-shadow:none;}
+  #scoreBox .star{font-size:22px;}
+  #streakBadge{
+    display:none; align-items:center; gap:2px;
+    margin-left:4px; padding:2px 8px; border-radius:10px;
+    background:linear-gradient(180deg,#ffb64f,#ff7a3d); color:#fff;
+    font-size:14px; font-weight:700;
+  }
+  #streakBadge.show{display:inline-flex;}
 
   #muteBtn{
     position:fixed; top:70px; right:16px; z-index:20;
     width:44px; height:44px; border-radius:50%;
-    background:var(--card); border:2px solid var(--card-border);
+    background:var(--card); border:3px solid var(--card-border);
     box-shadow:var(--shadow); font-size:19px; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
   }
-  #muteBtn.muted{opacity:.5;}
+  #muteBtn.muted{opacity:.55;}
 
   /* ---------- Settings ---------- */
   #gearBtn{
     position:fixed; top:16px; left:16px; z-index:21;
     width:46px; height:46px; border-radius:50%;
-    background:var(--card); border:2px solid var(--card-border);
+    background:var(--card); border:3px solid var(--card-border);
     box-shadow:var(--shadow); font-size:22px; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
   }
   #settingsPanel{
     position:fixed; top:72px; left:16px; z-index:22;
-    background:var(--card); border:2px solid var(--card-border);
-    border-radius:16px; padding:16px; box-shadow:var(--shadow);
+    background:var(--card); border:3px solid var(--card-border);
+    border-radius:18px; padding:16px; box-shadow:var(--shadow);
     width:230px; display:none; flex-direction:column; gap:10px;
   }
   #settingsPanel.open{display:flex;}
-  #settingsPanel h3{
-    margin:0 0 2px 0; font-family:'Orbitron',sans-serif; font-size:12px;
-    letter-spacing:.08em; text-transform:uppercase; color:var(--neon-cyan);
-    text-shadow:0 0 8px rgba(0,234,255,.6);
-  }
+  #settingsPanel h3{margin:0 0 2px 0; font-family:'Fredoka',sans-serif; font-size:16px;}
   #tableGrid{display:grid; grid-template-columns:repeat(4,1fr); gap:6px;}
   .tbtn{
-    padding:8px 0; border-radius:8px; border:1px solid rgba(0,234,255,.35);
-    background:rgba(255,255,255,.04); font-weight:700; font-family:'Fredoka',sans-serif; font-size:15px;
+    padding:8px 0; border-radius:10px; border:2px solid var(--card-border);
+    background:#fff; font-weight:700; font-family:'Fredoka',sans-serif; font-size:15px;
     cursor:pointer; color:var(--ink);
   }
-  .tbtn.active{background:linear-gradient(135deg,rgba(0,234,255,.28),rgba(255,46,166,.28)); border-color:var(--neon-pink); color:#fff; box-shadow:0 0 10px rgba(255,46,166,.35);}
+  .tbtn.active{background:var(--leaf); border-color:#3a9a49; color:#fff;}
   #allBtn{
-    padding:8px 0; border-radius:8px; border:1px solid rgba(155,92,255,.5);
-    background:rgba(155,92,255,.14); color:var(--ink); font-weight:700; font-family:'Fredoka',sans-serif;
+    padding:8px 0; border-radius:10px; border:2px solid var(--card-border);
+    background:var(--sky-mid); font-weight:700; font-family:'Fredoka',sans-serif;
     cursor:pointer; font-size:14px;
   }
-  #settingsHint{font-size:12px; color:var(--muted); line-height:1.35;}
+  #settingsHint{font-size:12px; color:#6b5f45; line-height:1.35;}
 
   /* ---------- Minimap ---------- */
   #mapWrap{
     position:fixed; bottom:16px; left:16px; z-index:20;
-    background:var(--card); border:2px solid var(--card-border);
-    border-radius:14px; padding:8px; box-shadow:var(--shadow);
+    background:rgba(255,253,247,.92); border:3px solid var(--card-border);
+    border-radius:16px; padding:8px; box-shadow:var(--shadow);
   }
-  #mapWrap .label{font-family:'Orbitron',sans-serif; font-size:10px; letter-spacing:.08em; font-weight:600; text-align:center; margin-bottom:4px; color:var(--neon-cyan);}
-  canvas#mapCanvas{display:block; border-radius:8px;}
+  #mapWrap .label{font-family:'Fredoka',sans-serif; font-size:11px; font-weight:600; text-align:center; margin-bottom:4px; color:#6b5f45;}
+  canvas#mapCanvas{display:block; border-radius:10px;}
 
   /* ---------- Controls hint ---------- */
   #controlsHint{
     position:fixed; top:16px; left:74px; z-index:20;
-    background:rgba(10,6,20,.7); color:var(--ink); border-radius:12px;
-    border:1px solid rgba(0,234,255,.25);
+    background:rgba(20,30,40,.68); color:#fff; border-radius:14px;
     padding:8px 12px; font-size:12px; line-height:1.5; font-weight:600;
     max-width:230px;
   }
-  #controlsHint b{color:var(--neon-yellow); text-shadow:0 0 6px rgba(255,231,76,.5);}
+  #controlsHint b{color:var(--sun);}
 
-  /* ---------- On-screen keypad ---------- */
-  #keypad{
-    position:fixed; left:18px; bottom:200px; z-index:25;
-    display:grid; grid-template-columns:56px 56px 56px; grid-template-rows:56px 56px 56px;
-    gap:6px; user-select:none;
+  /* ---------- Touch drag joystick (left half of screen) ---------- */
+  #joystickZone{
+    position:fixed; left:0; top:0; width:50%; height:100%; z-index:14;
+    touch-action:none;
   }
-  #keypad button{
-    border:none; border-radius:12px;
-    background:var(--card); border:2px solid var(--card-border);
-    box-shadow:var(--shadow); font-size:24px; color:var(--ink);
-    display:flex; align-items:center; justify-content:center;
-    cursor:pointer; touch-action:none;
+  #joystickBase{
+    position:fixed; z-index:24; width:110px; height:110px; border-radius:50%;
+    background:rgba(255,253,247,.35); border:3px solid rgba(255,255,255,.55);
+    box-shadow:0 4px 14px rgba(0,0,0,.18);
+    transform:translate(-50%,-50%); display:none; pointer-events:none;
   }
-  #keypad button:active, #keypad button.pressed{
-    background:rgba(255,46,166,.25); border-color:var(--neon-pink); color:#fff; transform:translateY(2px);
+  #joystickStick{
+    position:fixed; z-index:25; width:52px; height:52px; border-radius:50%;
+    background:rgba(255,253,247,.92); border:3px solid var(--card-border);
+    box-shadow:var(--shadow);
+    transform:translate(-50%,-50%); display:none; pointer-events:none;
   }
-  #kUp{grid-column:2; grid-row:1;}
-  #kLeft{grid-column:1; grid-row:2;}
-  #kRight{grid-column:3; grid-row:2;}
-  #kDown{grid-column:2; grid-row:3;}
-  #kCenterDot{grid-column:2; grid-row:2; display:flex; align-items:center; justify-content:center; font-size:16px; opacity:.35;}
 
   #actionBtn{
-    position:fixed; right:22px; bottom:200px; z-index:25;
+    position:fixed; right:22px; bottom:64px; z-index:25;
     width:92px; height:92px; border-radius:50%;
-    background:linear-gradient(180deg,#3a1f5c,#1c0e30); color:var(--neon-cyan);
-    border:3px solid var(--neon-purple); box-shadow:0 0 16px rgba(155,92,255,.5), 0 8px 0 #150a24;
-    font-family:'Orbitron',sans-serif; font-weight:700; font-size:13px;
+    background:linear-gradient(180deg,#ff8a72,var(--coral)); color:#fff;
+    border:4px solid #fff; box-shadow:0 8px 0 #c8493a;
+    font-family:'Fredoka',sans-serif; font-weight:700; font-size:14px;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
     cursor:pointer; touch-action:none;
   }
   #actionBtn .ic{font-size:30px;}
-  #actionBtn:active, #actionBtn.pressed{transform:translateY(6px); box-shadow:0 0 16px rgba(155,92,255,.5), 0 2px 0 #150a24;}
+  #actionBtn:active, #actionBtn.pressed{transform:translateY(6px); box-shadow:0 2px 0 #c8493a;}
   #actionBtn.ready{
-    background:linear-gradient(180deg,#0a3d33,#062018); color:var(--neon-green); border-color:var(--neon-green);
-    box-shadow:0 0 22px rgba(57,255,157,.7), 0 8px 0 #04140f;
+    background:linear-gradient(180deg,#8ef07a,var(--leaf));
+    box-shadow:0 8px 0 #2f8f3d;
     animation:pulseReady 0.9s infinite;
   }
   @keyframes pulseReady{
@@ -188,51 +182,44 @@
   /* ---------- Intro overlay ---------- */
   #intro{
     position:fixed; inset:0; z-index:50;
-    background:
-      radial-gradient(circle at 50% 15%, rgba(255,46,166,.22), transparent 45%),
-      radial-gradient(circle at 50% 100%, rgba(0,234,255,.16), transparent 55%),
-      radial-gradient(circle at 50% 30%, #2a0f4a, #05030f 75%);
+    background:radial-gradient(circle at 50% 20%, #6cc7ea, #2f7fb8 70%);
     display:flex; align-items:center; justify-content:center; flex-direction:column;
     text-align:center; padding:20px; overflow:auto;
   }
   #intro .panel{
-    background:var(--card); border:2px solid var(--neon-cyan);
-    box-shadow:0 0 30px rgba(0,234,255,.3), var(--shadow);
-    border-radius:22px; padding:34px 30px; max-width:480px;
+    background:var(--card); border:4px solid var(--card-border);
+    border-radius:26px; padding:34px 30px; max-width:480px; box-shadow:var(--shadow);
   }
   #intro h1{
-    font-family:'Orbitron',sans-serif; font-weight:800; font-size:clamp(24px,5.6vw,34px); margin:0 0 6px 0;
-    color:var(--neon-pink); text-shadow:0 0 12px rgba(255,46,166,.8), 0 0 30px rgba(0,234,255,.35);
-    letter-spacing:.02em;
+    font-family:'Fredoka',sans-serif; font-size:clamp(26px,6vw,38px); margin:0 0 6px 0;
+    color:var(--coral);
   }
-  #intro p{font-size:15px; line-height:1.6; margin:10px 0; color:var(--ink);}
-  #intro .ctrlList{text-align:left; font-size:14px; background:rgba(0,234,255,.06); border:1px solid rgba(0,234,255,.2); border-radius:12px; padding:12px 16px; margin:14px 0;}
+  #intro p{font-size:15px; line-height:1.6; margin:10px 0;}
+  #intro .ctrlList{text-align:left; font-size:14px; background:#fff6e2; border-radius:12px; padding:12px 16px; margin:14px 0;}
   #intro .ctrlList div{margin:4px 0;}
   #startBtn{
-    margin-top:10px; padding:14px 34px; border:none; border-radius:14px;
-    background:linear-gradient(180deg,var(--neon-pink),#a3126b); color:#fff;
-    font-family:'Orbitron',sans-serif; font-weight:700; font-size:17px; cursor:pointer;
-    letter-spacing:.04em;
-    box-shadow:0 0 20px rgba(255,46,166,.6), 0 8px 0 #6e0d49; transition:transform .08s;
+    margin-top:10px; padding:14px 34px; border:none; border-radius:16px;
+    background:linear-gradient(180deg,#ff8a72,var(--coral)); color:#fff;
+    font-family:'Fredoka',sans-serif; font-weight:700; font-size:19px; cursor:pointer;
+    box-shadow:0 8px 0 #c8493a; transition:transform .08s;
   }
-  #startBtn:active{transform:translateY(6px); box-shadow:0 0 20px rgba(255,46,166,.6), 0 2px 0 #6e0d49;}
+  #startBtn:active{transform:translateY(6px); box-shadow:0 2px 0 #c8493a;}
   #introMuteBtn{
-    display:block; margin:14px auto 0 auto; padding:10px 20px; border-radius:12px;
-    border:1px solid rgba(0,234,255,.4); background:rgba(0,234,255,.06);
+    display:block; margin:14px auto 0 auto; padding:10px 20px; border-radius:14px;
+    border:2px solid var(--card-border); background:#fff;
     font-family:'Fredoka',sans-serif; font-weight:700; font-size:14px; cursor:pointer;
     color:var(--ink);
   }
-  #introMuteBtn.muted{background:rgba(255,255,255,.04); opacity:.65;}
+  #introMuteBtn.muted{background:#f0ece0; opacity:.7;}
 
   #callBubble{
     position:fixed; z-index:19; pointer-events:none; display:none;
-    font-size:54px; filter:drop-shadow(0 0 16px rgba(255,46,166,.9));
+    font-size:54px; filter:drop-shadow(0 3px 6px rgba(0,0,0,.35));
     transform:translate(-50%,-60%);
   }
 
   @media (max-width:640px){
-    #keypad{ bottom:150px; }
-    #actionBtn{ bottom:150px; width:80px; height:80px; }
+    #actionBtn{ bottom:34px; width:80px; height:80px; }
     #controlsHint{ display:none; }
   }
 </style>
@@ -247,7 +234,7 @@
   <div id="msgBanner"></div>
 </div>
 
-<div id="scoreBox"><span class="star">⭐</span><span id="scoreText">0</span></div>
+<div id="scoreBox"><span class="star">⭐</span><span id="scoreText">0</span><span id="streakBadge">🔥<span id="streakText">0</span></span></div>
 <button id="muteBtn" title="Mute/unmute sound">🔊</button>
 
 <button id="gearBtn" title="Choose tables">⚙️</button>
@@ -258,10 +245,11 @@
   <div id="settingsHint">Pick one or more tables. New deliveries will use your choice.</div>
   <h3 style="margin-top:8px;">🎵 Music style</h3>
   <div id="musicGrid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px;">
-    <button class="tbtn music-btn" data-style="cyberpunk">Cyberpunk</button>
+    <button class="tbtn music-btn active" data-style="cyberpunk">Funky</button>
     <button class="tbtn music-btn" data-style="adventure">Adventure</button>
     <button class="tbtn music-btn" data-style="chill">Chill</button>
-    <button class="tbtn music-btn active" data-style="retro">Retro</button>
+    <button class="tbtn music-btn" data-style="retro">Retro</button>
+    <button class="tbtn music-btn" data-style="classical" style="grid-column:span 2;">Classical</button>
   </div>
   <h3 style="margin-top:8px;">🔊 Audio</h3>
   <div style="display:flex; gap:6px;">
@@ -270,7 +258,7 @@
   </div>
 </div>
 <div id="controlsHint">
-  Fly to the depot to pick up automatically. At a house, press <b>Space</b> or the 📦 button to deliver.
+  Touch: drag on the left side to fly. Fly to the depot to auto pick-up. At a house, press <b>Space</b> or the 📦 button to deliver.
 </div>
 
 <div id="mapWrap">
@@ -278,24 +266,21 @@
   <canvas id="mapCanvas" width="170" height="170"></canvas>
 </div>
 
-<div id="keypad">
-  <button id="kUp">⬆️</button>
-  <div id="kCenterDot">✛</div>
-  <button id="kLeft">↩️</button>
-  <button id="kRight">↪️</button>
-  <button id="kDown">⬇️</button>
-</div>
+<div id="joystickZone"></div>
+<div id="joystickBase"></div>
+<div id="joystickStick"></div>
 <button id="actionBtn"><span class="ic">📦</span><span id="actionLabel">GO</span></button>
 
 <div id="callBubble">📞</div>
 
 <div id="intro">
   <div class="panel">
-    <h1>🌆 SkyMath Delivery 2099</h1>
+    <h1>🚁 SkyMath Delivery</h1>
     <p>Fly your drone around town, find the glowing pickup building, grab the package, solve the multiplication problem, and drop it at the house with the <b>right answer</b>!</p>
     <div class="ctrlList">
-      <div>🕹️ <b>W/S</b> or <b>↑/↓</b> — fly forward / back</div>
-      <div>↩️ <b>A/D</b> or <b>←/→</b> — turn</div>
+      <div>🕹️ <b>W/S</b> or <b>↑/↓</b> — fly forward / back (desktop)</div>
+      <div>↩️ <b>A/D</b> or <b>←/→</b> — turn (desktop)</div>
+      <div>👆 On touch screens: press anywhere on the <b>left side</b> and drag — up/down flies forward/back, left/right turns</div>
       <div>📦 Fly close to the depot — pickup happens automatically</div>
       <div>🎯 At a house, press <b>Space</b> or the 📦 button to deliver</div>
     </div>
@@ -338,7 +323,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.12;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x2a1240, 0.0042);
+scene.fog = new THREE.FogExp2(0xd9c9a6, 0.0032);
 
 const camera = new THREE.PerspectiveCamera(64, window.innerWidth/window.innerHeight, 0.1, 1200);
 camera.position.set(0, 14, 40);
@@ -359,8 +344,8 @@ onResize();
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     uniforms:{
-      top:{value:new THREE.Color(0x0a0620)},
-      bottom:{value:new THREE.Color(0xb8258f)}
+      top:{value:new THREE.Color(0x2f7fb5)},
+      bottom:{value:new THREE.Color(0xffddab)}
     },
     vertexShader:`varying vec3 vPos; void main(){ vPos=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
     fragmentShader:`
@@ -374,30 +359,29 @@ onResize();
 }
 const sun = new THREE.Mesh(
   new THREE.SphereGeometry(14,16,16),
-  new THREE.MeshBasicMaterial({color:0xcfe8ff})
+  new THREE.MeshBasicMaterial({color:0xfff2b0})
 );
 sun.position.set(-220, 160, -260);
 scene.add(sun);
 
-// soft additive glow halo — cyan/magenta neon haze instead of a warm sun flare
+// soft additive glow halo around the sun for atmospheric flare
 function glowTexture(){
   const c = document.createElement('canvas'); c.width=c.height=256;
   const ctx = c.getContext('2d');
   const g = ctx.createRadialGradient(128,128,0,128,128,128);
-  g.addColorStop(0,'rgba(190,235,255,0.9)');
-  g.addColorStop(0.35,'rgba(255,60,190,0.35)');
-  g.addColorStop(1,'rgba(255,60,190,0)');
+  g.addColorStop(0,'rgba(255,244,214,0.95)');
+  g.addColorStop(0.35,'rgba(255,220,160,0.45)');
+  g.addColorStop(1,'rgba(255,220,160,0)');
   ctx.fillStyle = g; ctx.fillRect(0,0,256,256);
   return new THREE.CanvasTexture(c);
 }
 const sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({map:glowTexture(), transparent:true, blending:THREE.AdditiveBlending, depthWrite:false}));
 sunGlow.position.copy(sun.position);
-sunGlow.scale.set(170,170,1);
+sunGlow.scale.set(160,160,1);
 scene.add(sunGlow);
 
-// hazy smog clouds — dark, moody, tinted purple instead of fluffy white
 const cloudGroup = new THREE.Group();
-const cloudMat = new THREE.MeshStandardMaterial({color:0x3a2255, roughness:1, flatShading:true});
+const cloudMat = new THREE.MeshStandardMaterial({color:0xffffff, roughness:1, flatShading:true});
 function makeCloud(){
   const g = new THREE.Group();
   const puffs = 3 + Math.floor(Math.random()*3);
@@ -420,8 +404,8 @@ scene.add(cloudGroup);
 /* ============================================================
    LIGHTS
 ============================================================ */
-scene.add(new THREE.HemisphereLight(0x4a2a7a, 0x1a0e2e, 0.75));
-const sunLight = new THREE.DirectionalLight(0x8fd6ff, 1.05);
+scene.add(new THREE.HemisphereLight(0x8fd0e8, 0x5f9a52, 0.55));
+const sunLight = new THREE.DirectionalLight(0xffe3b0, 1.35);
 sunLight.position.set(-90, 130, -60);
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.set(2048,2048);
@@ -433,12 +417,12 @@ sunLight.shadow.camera.far = 400;
 sunLight.shadow.bias = -0.0015;
 scene.add(sunLight);
 
-// magenta neon rim/fill light from the opposite side — classic cyberpunk cyan/pink contrast
-const fillLight = new THREE.DirectionalLight(0xff2ea6, 0.55);
+// cool rim/fill light from the opposite side — classic teal-orange cinematic contrast
+const fillLight = new THREE.DirectionalLight(0x6fa9ff, 0.32);
 fillLight.position.set(100, 60, 90);
 scene.add(fillLight);
 
-scene.add(new THREE.AmbientLight(0x4a3568, 0.4));
+scene.add(new THREE.AmbientLight(0xffffff,0.2));
 
 /* ============================================================
    GROUND
@@ -446,11 +430,30 @@ scene.add(new THREE.AmbientLight(0x4a3568, 0.4));
 function grassTexture(){
   const c = document.createElement('canvas'); c.width=c.height=256;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#131226'; ctx.fillRect(0,0,256,256);
-  for(let i=0;i<900;i++){
-    ctx.fillStyle = Math.random()>0.5 ? 'rgba(40,25,60,0.5)' : 'rgba(20,40,55,0.4)';
-    const x=Math.random()*256, y=Math.random()*256, r=1+Math.random()*2.4;
+  ctx.fillStyle = '#5fae52'; ctx.fillRect(0,0,256,256);
+  // soft patchy shading for uneven terrain
+  for(let i=0;i<40;i++){
+    const x=Math.random()*256, y=Math.random()*256, r=14+Math.random()*30;
+    ctx.fillStyle = Math.random()>0.5 ? 'rgba(70,140,60,0.35)' : 'rgba(120,190,100,0.3)';
     ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill();
+  }
+  // small dirt/soil patches
+  for(let i=0;i<10;i++){
+    const x=Math.random()*256, y=Math.random()*256, r=4+Math.random()*8;
+    ctx.fillStyle = 'rgba(110,90,55,0.35)';
+    ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill();
+  }
+  // individual grass-blade streaks for texture at close range
+  for(let i=0;i<1400;i++){
+    const x=Math.random()*256, y=Math.random()*256;
+    const len = 2+Math.random()*4;
+    const lean = (Math.random()-0.5)*1.5;
+    ctx.strokeStyle = Math.random()>0.5 ? 'rgba(80,165,68,0.55)' : 'rgba(150,220,120,0.4)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(x,y);
+    ctx.lineTo(x+lean,y-len);
+    ctx.stroke();
   }
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
@@ -459,7 +462,7 @@ function grassTexture(){
 }
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(WORLD_HALF*2.4, WORLD_HALF*2.4, 1,1),
-  new THREE.MeshStandardMaterial({map:grassTexture(), roughness:0.55, metalness:0.15})
+  new THREE.MeshStandardMaterial({map:grassTexture(), roughness:1})
 );
 ground.rotation.x = -Math.PI/2;
 ground.receiveShadow = true;
@@ -489,7 +492,46 @@ const parkCells = remaining.slice(0, PARK_COUNT);
 const decoyCells = remaining.slice(PARK_COUNT); // these can serve as the rotating pickup point
 
 // roads: draw grid streets along the midlines between cell rows/cols
-const roadMat = new THREE.MeshStandardMaterial({color:0x0e0d16, roughness:0.35, metalness:0.4});
+/* ============================================================
+   PROCEDURAL TEXTURE HELPERS (all generated on canvas — no
+   external image files needed, keeps the game a single portable
+   file that works anywhere with no network dependency)
+============================================================ */
+const _texCache = new Map();
+function cachedTexture(key, generator){
+  if(_texCache.has(key)) return _texCache.get(key);
+  const tex = generator();
+  _texCache.set(key, tex);
+  return tex;
+}
+
+function asphaltTexture(){
+  return cachedTexture('asphalt', ()=>{
+    const size = 256;
+    const c = document.createElement('canvas'); c.width=c.height=size;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#8f8f95'; ctx.fillRect(0,0,size,size);
+    for(let i=0;i<2200;i++){
+      const shade = Math.random()*46;
+      const dark = Math.random()>0.5;
+      ctx.fillStyle = `rgba(${dark?0:255},${dark?0:255},${dark?0:255},${shade/140})`;
+      ctx.fillRect(Math.random()*size, Math.random()*size, 1+Math.random()*2, 1+Math.random()*2);
+    }
+    ctx.strokeStyle = 'rgba(50,50,55,0.5)'; ctx.lineWidth = 1;
+    for(let i=0;i<7;i++){
+      let x=Math.random()*size, y=Math.random()*size;
+      ctx.beginPath(); ctx.moveTo(x,y);
+      for(let j=0;j<5;j++){ x+=Math.random()*30-15; y+=Math.random()*30-15; ctx.lineTo(x,y); }
+      ctx.stroke();
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(3,26);
+    return tex;
+  });
+}
+
+const roadMat = new THREE.MeshStandardMaterial({map:asphaltTexture(), color:0xcfcfd2, roughness:1});
 const roadSpan = (Math.max(GRID_COLS,GRID_ROWS))*SPACING + SPACING*1.3;
 function addRoad(isVertical, offset){
   const geo = isVertical
@@ -501,7 +543,7 @@ function addRoad(isVertical, offset){
   m.receiveShadow = true;
   scene.add(m);
   // dashed centerline
-  const lineMat = new THREE.MeshBasicMaterial({color:0x00eaff, transparent:true, opacity:0.85});
+  const lineMat = new THREE.MeshBasicMaterial({color:0xf4e9c8});
   for(let d=-roadSpan/2; d<roadSpan/2; d+=8){
     const dash = new THREE.Mesh(new THREE.PlaneGeometry(isVertical?0.4:1.6, isVertical?1.6:0.4), lineMat);
     dash.rotation.x = -Math.PI/2;
@@ -525,23 +567,15 @@ for(let r=0;r<GRID_ROWS-1;r++){
 /* ============================================================
    CARS (ambient traffic driving along the road grid)
 ============================================================ */
-const CAR_COLORS = [0x1a1a24,0x2b1a3a,0x141826,0x1a2430,0x241428,0x0f0f18,0x1e1e2a,0x181420];
-const CAR_GLOW_COLORS = [0x00eaff,0xff2ea6,0x9b5cff,0x39ff9d,0xffe74c];
-function makeCar(color, glowColor){
+const CAR_COLORS = [0xe4453c,0x3e6fe0,0xffd23f,0x4fbf5f,0xffffff,0xff8a3d,0x8a5adf,0x2b2b2b];
+function makeCar(color){
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(2.6,0.9,1.4), new THREE.MeshStandardMaterial({color, roughness:0.35, metalness:0.6}));
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.6,0.9,1.4), new THREE.MeshStandardMaterial({color, roughness:0.5, metalness:0.15}));
   body.position.y = 0.7; body.castShadow = true;
   g.add(body);
-  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.3,0.6,1.2), new THREE.MeshStandardMaterial({color:0x0a0a12, transparent:true, opacity:0.85}));
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.3,0.6,1.2), new THREE.MeshStandardMaterial({color:0xbfe6f5, transparent:true, opacity:0.75}));
   cabin.position.set(-0.1,1.25,0); cabin.castShadow = true;
   g.add(cabin);
-  // neon underglow strip — signature cyberpunk touch
-  const glow = new THREE.Mesh(new THREE.BoxGeometry(2.7,0.1,1.5), new THREE.MeshBasicMaterial({color:glowColor}));
-  glow.position.y = 0.28;
-  g.add(glow);
-  const headlight = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.18,1.1), new THREE.MeshBasicMaterial({color:0xffffff}));
-  headlight.position.set(1.28,0.7,0);
-  g.add(headlight);
   const wheelGeo = new THREE.CylinderGeometry(0.32,0.32,0.28,10);
   const wheelMat = new THREE.MeshStandardMaterial({color:0x222222});
   [[0.85,0.75],[0.85,-0.75],[-0.85,0.75],[-0.85,-0.75]].forEach(([wx,wz])=>{
@@ -561,7 +595,7 @@ for(let i=0;i<CAR_COUNT;i++){
   const lane = laneArr[Math.floor(Math.random()*laneArr.length)];
   const dir = Math.random()<0.5 ? 1 : -1;
   const laneOffset = dir>0 ? 1.7 : -1.7; // drive on the correct side of the road
-  const car = makeCar(CAR_COLORS[i%CAR_COLORS.length], CAR_GLOW_COLORS[i%CAR_GLOW_COLORS.length]);
+  const car = makeCar(CAR_COLORS[i%CAR_COLORS.length]);
   const along = (Math.random()-0.5)*roadSpan;
   if(vertical){
     car.position.set(lane+laneOffset, 0, along);
@@ -597,7 +631,7 @@ function makeTree(){
   const g = new THREE.Group();
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.5,2.4,6), new THREE.MeshStandardMaterial({color:0x8a5a3a,flatShading:true}));
   trunk.position.y = 1.2; trunk.castShadow=true;
-  const leafColors = [0x1e3a2e,0x223a28,0x1a2e38];
+  const leafColors = [0x4fa652,0x5cb85c,0x3f9a4a];
   const col = leafColors[Math.floor(Math.random()*leafColors.length)];
   for(let i=0;i<3;i++){
     const cone = new THREE.Mesh(new THREE.ConeGeometry(1.6-0.28*i, 2.0, 7), new THREE.MeshStandardMaterial({color:col, flatShading:true}));
@@ -624,7 +658,7 @@ for(let i=0;i<70;i++){
 parkCells.forEach(cell=>{
   const g = new THREE.Group();
   g.position.set(cell.x, 0, cell.z);
-  const pond = new THREE.Mesh(new THREE.CircleGeometry(4.2,20), new THREE.MeshStandardMaterial({color:0x0c0a18, roughness:0.15, metalness:0.6}));
+  const pond = new THREE.Mesh(new THREE.CircleGeometry(4.2,20), new THREE.MeshStandardMaterial({color:0x6fb7d9, roughness:0.2, metalness:0.1}));
   pond.rotation.x = -Math.PI/2; pond.position.y = 0.03;
   g.add(pond);
   for(let i=0;i<4;i++){
@@ -645,29 +679,24 @@ function moteTexture(){
   const c = document.createElement('canvas'); c.width=c.height=64;
   const ctx = c.getContext('2d');
   const g = ctx.createRadialGradient(32,32,0,32,32,32);
-  g.addColorStop(0,'rgba(180,240,255,0.9)');
-  g.addColorStop(1,'rgba(180,240,255,0)');
+  g.addColorStop(0,'rgba(255,238,196,0.9)');
+  g.addColorStop(1,'rgba(255,238,196,0)');
   ctx.fillStyle = g; ctx.fillRect(0,0,64,64);
   return new THREE.CanvasTexture(c);
 }
 const MOTE_COUNT = 160;
 const moteGeo = new THREE.BufferGeometry();
 const motePos = new Float32Array(MOTE_COUNT*3);
-const moteColor = new Float32Array(MOTE_COUNT*3);
 const moteSpeed = [];
-const MOTE_PALETTE = [[0,0.92,1],[1,0.18,0.65],[0.61,0.36,1]]; // cyan / magenta / purple
 for(let i=0;i<MOTE_COUNT;i++){
   motePos[i*3]   = (Math.random()-0.5)*140;
   motePos[i*3+1] = Math.random()*26;
   motePos[i*3+2] = (Math.random()-0.5)*140;
   moteSpeed.push(0.25+Math.random()*0.5);
-  const c = MOTE_PALETTE[Math.floor(Math.random()*MOTE_PALETTE.length)];
-  moteColor[i*3]=c[0]; moteColor[i*3+1]=c[1]; moteColor[i*3+2]=c[2];
 }
 moteGeo.setAttribute('position', new THREE.BufferAttribute(motePos,3));
-moteGeo.setAttribute('color', new THREE.BufferAttribute(moteColor,3));
 const moteMat = new THREE.PointsMaterial({
-  size:0.55, map:moteTexture(), transparent:true, opacity:0.65, vertexColors:true,
+  size:0.55, map:moteTexture(), transparent:true, opacity:0.55,
   blending:THREE.AdditiveBlending, depthWrite:false, sizeAttenuation:true
 });
 const motes = new THREE.Points(moteGeo, moteMat);
@@ -693,25 +722,18 @@ function makeSignTexture(text, opts={}){
   const size = 256;
   const c = document.createElement('canvas'); c.width=c.height=size;
   const ctx = c.getContext('2d');
-  const bg = opts.bg || '#120a1e';
-  const border = opts.border || '#00eaff';
+  const bg = opts.bg || '#ffffff';
+  const border = opts.border || '#2b2b2b';
   const r=44, x=10,y=10,w=size-20,h=size-20;
   ctx.beginPath();
   ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
   ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
   ctx.fillStyle = bg; ctx.fill();
-  ctx.save();
-  ctx.shadowColor = border; ctx.shadowBlur = 22;
-  ctx.lineWidth = 10; ctx.strokeStyle = border; ctx.stroke(); ctx.stroke();
-  ctx.restore();
-  ctx.save();
-  ctx.fillStyle = opts.text || '#eaf6ff';
+  ctx.lineWidth = 12; ctx.strokeStyle = border; ctx.stroke();
+  ctx.fillStyle = opts.text || '#22303b';
   ctx.font = opts.font || '700 128px Arial, sans-serif';
   ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.shadowColor = opts.text || '#eaf6ff'; ctx.shadowBlur = 16;
   ctx.fillText(text, size/2, size/2+10);
-  ctx.fillText(text, size/2, size/2+10);
-  ctx.restore();
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
@@ -721,14 +743,100 @@ function makeSignTexture(text, opts={}){
    BUILDING BUILDER (shared by houses & decoys)
 ============================================================ */
 const HOUSE_PALETTES = [
-  {body:0x1c1a28, roof:0x100e18, neon:0x00eaff}, {body:0x201828, roof:0x140e1c, neon:0xff2ea6},
-  {body:0x18202c, roof:0x0e141c, neon:0x9b5cff}, {body:0x241a20, roof:0x160e14, neon:0x39ff9d},
-  {body:0x1a1c2a, roof:0x10121c, neon:0xffe74c}, {body:0x221c30, roof:0x141020, neon:0x00eaff},
-  {body:0x1c2028, roof:0x10141a, neon:0xff2ea6}, {body:0x282034, roof:0x181422, neon:0x9b5cff},
-  {body:0x1a222c, roof:0x0e141c, neon:0x39ff9d}, {body:0x241e2a, roof:0x160e18, neon:0xffe74c},
-  {body:0x1e1a2a, roof:0x120e1a, neon:0x00eaff}, {body:0x201c24, roof:0x120e14, neon:0xff2ea6},
-  {body:0x1c1e2c, roof:0x10101a, neon:0x9b5cff}
+  {body:0xf6c28b, roof:0xb5533c}, {body:0xf3e39c, roof:0x5a8f5a},
+  {body:0xbfe0e6, roof:0x3f6f8f}, {body:0xf0b7c4, roof:0x8f4f6f},
+  {body:0xd8cbe8, roof:0x6a4f8f}, {body:0xc9e4c1, roof:0x4a7a4a},
+  {body:0xf9d59b, roof:0xc76b3d}, {body:0xcfe1f5, roof:0x4d6f9f},
+  {body:0xf7cfcf, roof:0xb54848}, {body:0xe3ddc9, roof:0x8a7355},
+  {body:0xd6e6d1, roof:0x5f8f6f}, {body:0xf5e6c8, roof:0x9f6f4a},
+  {body:0xcfe8ea, roof:0x3f8f8f}
 ];
+
+function brickWallTexture(baseHex){
+  return cachedTexture('brick_'+baseHex, ()=>{
+    const size = 256;
+    const c = document.createElement('canvas'); c.width=c.height=size;
+    const ctx = c.getContext('2d');
+    const base = new THREE.Color(baseHex);
+    ctx.fillStyle = '#847a68'; ctx.fillRect(0,0,size,size); // mortar
+    const brickW=36, brickH=15, gap=3;
+    let row=0;
+    for(let y=-brickH; y<size+brickH; y+=brickH+gap){
+      const offset = (row%2===0) ? 0 : -(brickW/2);
+      for(let x=offset; x<size+brickW; x+=brickW+gap){
+        const shade = Math.min(1, 0.72+Math.random()*0.42);
+        const col = base.clone().multiplyScalar(shade);
+        ctx.fillStyle = '#'+col.getHexString();
+        ctx.fillRect(x, y, brickW, brickH);
+      }
+      row++;
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1.6,1.1);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  });
+}
+
+function roofShingleTexture(baseHex){
+  return cachedTexture('roof_'+baseHex, ()=>{
+    const size = 256;
+    const c = document.createElement('canvas'); c.width=c.height=size;
+    const ctx = c.getContext('2d');
+    const base = new THREE.Color(baseHex);
+    ctx.fillStyle = '#'+base.clone().multiplyScalar(0.6).getHexString();
+    ctx.fillRect(0,0,size,size);
+    const rowH = 20, tileW = 20;
+    let row=0;
+    for(let y=0;y<size;y+=rowH){
+      const offset = (row%2===0) ? 0 : tileW/2;
+      for(let x=-tileW; x<size+tileW; x+=tileW){
+        const shade = Math.min(1, 0.75+Math.random()*0.4);
+        const col = base.clone().multiplyScalar(shade);
+        ctx.fillStyle = '#'+col.getHexString();
+        ctx.beginPath();
+        ctx.moveTo(x+offset, y);
+        ctx.lineTo(x+offset+tileW-2, y);
+        ctx.lineTo(x+offset+(tileW-2)/2, y+rowH-3);
+        ctx.closePath();
+        ctx.fill();
+      }
+      row++;
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2.2,2.2);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  });
+}
+
+function doorWoodTexture(){
+  return cachedTexture('door', ()=>{
+    const w=128, h=200;
+    const c = document.createElement('canvas'); c.width=w; c.height=h;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#6b4327'; ctx.fillRect(0,0,w,h);
+    for(let x=0;x<w;x+=7){
+      ctx.fillStyle = `rgba(0,0,0,${0.08+Math.random()*0.12})`;
+      ctx.fillRect(x,0,3,h);
+    }
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    for(let i=0;i<26;i++){
+      const y = Math.random()*h;
+      ctx.beginPath(); ctx.moveTo(0,y);
+      ctx.bezierCurveTo(w*0.3,y+Math.random()*6-3,w*0.7,y+Math.random()*6-3,w,y);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 3;
+    ctx.strokeRect(w*0.16, h*0.08, w*0.68, h*0.35);
+    ctx.strokeRect(w*0.16, h*0.55, w*0.68, h*0.37);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  });
+}
 
 function cardinalFacing(x, z){
   // snap building orientation to the nearest cardinal direction so fronts
@@ -748,8 +856,8 @@ function buildStructure(x, z, palIdx, facesCenter){
 
   const style = palIdx % 3; // 0 = pyramid roof, 1 = gable roof, 2 = flat modern roof
   const bw = 7+Math.random()*1.4, bh=4.2+Math.random()*1.4, bd=6.4;
-  const roofMat = new THREE.MeshStandardMaterial({color:pal.roof, flatShading:true});
-  const body = new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd), new THREE.MeshStandardMaterial({color:pal.body, roughness:0.9}));
+  const roofMat = new THREE.MeshStandardMaterial({map:roofShingleTexture(pal.roof), color:0xffffff, flatShading:true, roughness:0.85});
+  const body = new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd), new THREE.MeshStandardMaterial({map:brickWallTexture(pal.body), color:0xffffff, roughness:0.9}));
   body.position.y = bh/2; body.castShadow=true; body.receiveShadow=true;
   g.add(body);
 
@@ -767,6 +875,25 @@ function buildStructure(x, z, palIdx, facesCenter){
     const panelR = new THREE.Mesh(panelGeo, roofMat);
     panelR.position.set(halfW/2, bh+roofRise/2, 0); panelR.rotation.z = -slope; panelR.castShadow=true;
     g.add(panelL, panelR);
+
+    // triangular gable-end infill — without this there's an open gap
+    // between the flat wall top and the sloped roof at the front/back
+    const gableMat = new THREE.MeshStandardMaterial({map:brickWallTexture(pal.body), color:0xffffff, roughness:0.9, side:THREE.DoubleSide});
+    const gableShape = new THREE.Shape();
+    gableShape.moveTo(-bw/2, 0);
+    gableShape.lineTo(bw/2, 0);
+    gableShape.lineTo(0, roofRise);
+    gableShape.lineTo(-bw/2, 0);
+    const gableGeo = new THREE.ShapeGeometry(gableShape);
+    const gableFront = new THREE.Mesh(gableGeo, gableMat);
+    gableFront.position.set(0, bh, bd/2);
+    gableFront.castShadow = true;
+    g.add(gableFront);
+    const gableBack = new THREE.Mesh(gableGeo, gableMat);
+    gableBack.position.set(0, bh, -bd/2);
+    gableBack.rotation.y = Math.PI;
+    gableBack.castShadow = true;
+    g.add(gableBack);
   } else {
     const cap = new THREE.Mesh(new THREE.BoxGeometry(bw+0.5,0.4,bd+0.5), roofMat);
     cap.position.y = bh+0.2; cap.castShadow = true;
@@ -779,20 +906,15 @@ function buildStructure(x, z, palIdx, facesCenter){
     });
   }
 
-  const door = new THREE.Mesh(new THREE.PlaneGeometry(1.3,2.2), new THREE.MeshStandardMaterial({color:0x0e0e14, roughness:0.4, metalness:0.5}));
+  const door = new THREE.Mesh(new THREE.PlaneGeometry(1.3,2.2), new THREE.MeshStandardMaterial({map:doorWoodTexture(), color:0xffffff}));
   door.position.set(0, 1.1, bd/2+0.02);
   g.add(door);
 
   for(const dx of [-1,1]){
-    const win = new THREE.Mesh(new THREE.PlaneGeometry(1.1,1.1), new THREE.MeshStandardMaterial({color:pal.neon, emissive:pal.neon, emissiveIntensity:1.1}));
+    const win = new THREE.Mesh(new THREE.PlaneGeometry(1.1,1.1), new THREE.MeshStandardMaterial({color:0xfff6c9, emissive:0xffe9a0, emissiveIntensity:0.3}));
     win.position.set(dx*bw*0.28, 2.6, bd/2+0.02);
     g.add(win);
   }
-
-  // glowing neon sign strip near the roofline — signature cyberpunk touch
-  const neonStrip = new THREE.Mesh(new THREE.BoxGeometry(bw*0.92,0.14,0.08), new THREE.MeshBasicMaterial({color:pal.neon}));
-  neonStrip.position.set(0, bh-0.25, bd/2+0.04);
-  g.add(neonStrip);
 
   scene.add(g);
   return { group:g, bodyWidth:bw, roofY:bh, worldPos:new THREE.Vector3(x,0,z) };
@@ -840,7 +962,7 @@ function setHouseNumber(house, num, isCorrect){
   house.number = num;
   house.isCorrect = isCorrect;
   house.sign.material.map && house.sign.material.map.dispose();
-  house.sign.material.map = makeSignTexture(String(num), {bg:'#0e0a1a', border:'#ffe74c', text:'#fff6d6'});
+  house.sign.material.map = makeSignTexture(String(num), {bg:'#ffffff', border:'#38414a', text:'#22303b'});
   house.sign.material.needsUpdate = true;
 }
 
@@ -851,7 +973,7 @@ const decoys = [];
 decoyCells.forEach((cell, i)=>{
   const struct = buildStructure(cell.x, cell.z, HOUSE_COUNT+i, true);
 
-  const pkgSign = new THREE.Sprite(new THREE.SpriteMaterial({map: makeSignTexture('📦', {bg:'#170a1e', border:'#ff2ea6', font:'128px Arial'}), transparent:true, opacity:0}));
+  const pkgSign = new THREE.Sprite(new THREE.SpriteMaterial({map: makeSignTexture('📦', {bg:'#fff6e2', border:'#f2994a', font:'128px Arial'}), transparent:true, opacity:0}));
   pkgSign.position.set(0, struct.roofY+8.5, 0);
   pkgSign.scale.set(6.8,6.8,1);
   struct.group.add(pkgSign);
@@ -879,13 +1001,13 @@ let packageMesh = null;
    DRONE
 ============================================================ */
 const drone = new THREE.Group();
-const droneBodyMat = new THREE.MeshStandardMaterial({color:0x14141c, roughness:0.3, metalness:0.7});
-const droneAccentMat = new THREE.MeshStandardMaterial({color:0x00eaff, emissive:0x00eaff, emissiveIntensity:0.9, roughness:0.4});
+const droneBodyMat = new THREE.MeshStandardMaterial({color:0x3e6fe0, roughness:0.35, metalness:0.25});
+const droneAccentMat = new THREE.MeshStandardMaterial({color:0xffd23f, roughness:0.4});
 
 const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.15,1), droneBodyMat);
 core.castShadow = true;
 drone.add(core);
-const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.65,12,10,0,Math.PI*2,0,Math.PI/1.7), new THREE.MeshStandardMaterial({color:0xff2ea6, emissive:0xff2ea6, emissiveIntensity:0.4, transparent:true, opacity:0.7, roughness:0.1}));
+const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.65,12,10,0,Math.PI*2,0,Math.PI/1.7), new THREE.MeshStandardMaterial({color:0xbfe9ff, transparent:true, opacity:0.75, roughness:0.1}));
 canopy.position.set(0,0.35,0.55);
 drone.add(canopy);
 
@@ -915,7 +1037,7 @@ legL.position.set(-0.8,-0.9,0); legL.rotation.z = 0.3;
 const legR = legL.clone(); legR.position.x = 0.8; legR.rotation.z = -0.3;
 drone.add(legL, legR);
 
-const headlight = new THREE.PointLight(0x66f0ff, 1.3, 46, 2);
+const headlight = new THREE.PointLight(0xfff2c0, 1.3, 46, 2);
 headlight.position.set(0, -0.2, 1.4);
 drone.add(headlight);
 
@@ -1034,6 +1156,156 @@ function updateCables(hanging){
     pos.setXYZ(0, _dronePts[d].x, _dronePts[d].y, _dronePts[d].z);
     pos.setXYZ(1, _pkgPts[p].x, _pkgPts[p].y, _pkgPts[p].z);
     pos.needsUpdate = true;
+  });
+}
+
+/* ============================================================
+   DRONE UPGRADES — cosmetic tiers unlocked by a correct-answer
+   streak. Upgrades are additive and permanent for the session;
+   a wrong delivery only resets the streak counter, not the tier.
+============================================================ */
+const DRONE_TIER_STREAKS = [3, 6, 10, 15];
+const DRONE_TIER_NAMES = {
+  1: '💍 Drone upgraded — Glowing arm rings!',
+  2: '🌈 Drone upgraded — Rainbow trail!',
+  3: '🚁 Drone upgraded — Escort drones!',
+  4: '👑 Drone upgraded — Royal crown!'
+};
+let droneTier = 0;
+const droneUpgradeExtras = {};
+
+function updateStreakBadge(){
+  const badge = document.getElementById('streakBadge');
+  document.getElementById('streakText').textContent = state.streak;
+  badge.classList.toggle('show', state.streak>0);
+}
+
+function makeMiniDrone(){
+  const g = new THREE.Group();
+  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.15,1), droneBodyMat);
+  g.add(core);
+  const arms = [];
+  [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([sx,sz])=>{
+    const armGroup = new THREE.Group();
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(1.9,0.18,0.32), droneAccentMat);
+    arm.position.set(sx*1.05, 0, sz*1.05);
+    arm.rotation.y = Math.atan2(sz,sx);
+    armGroup.add(arm);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.28,0.22,10), new THREE.MeshStandardMaterial({color:0x2b2b2b}));
+    hub.position.set(sx*1.9, 0.05, sz*1.9);
+    armGroup.add(hub);
+    const prop = new THREE.Mesh(new THREE.BoxGeometry(1.7,0.06,0.16), new THREE.MeshStandardMaterial({color:0x334155, transparent:true, opacity:0.85}));
+    prop.position.set(sx*1.9, 0.2, sz*1.9);
+    armGroup.add(prop);
+    arms.push(prop);
+    g.add(armGroup);
+  });
+  g.scale.setScalar(0.42);
+  return {group:g, arms};
+}
+
+function applyDroneTier(tier){
+  if(tier<=droneTier) return;
+  droneTier = tier;
+
+  if(tier>=1){
+    // glowing rings on each arm
+    DRONE_HANG_POINTS.forEach(pt=>{
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.32,0.045,6,16), new THREE.MeshBasicMaterial({color:0x4fd7ff}));
+      ring.position.set(pt.x, pt.y+0.05, pt.z);
+      ring.rotation.x = Math.PI/2;
+      drone.add(ring);
+    });
+  }
+  if(tier>=3){
+    // two mini escort drones flying in formation behind the main drone
+    droneUpgradeExtras.minis = [];
+    [-2.0, 2.0].forEach(sideX=>{
+      const mini = makeMiniDrone();
+      mini.group.position.set(sideX, -0.2, 2.6);
+      drone.add(mini.group);
+      droneUpgradeExtras.minis.push(mini);
+    });
+  }
+  if(tier>=4){
+    // small crown on top of the drone
+    const crown = new THREE.Group();
+    const gold = new THREE.MeshStandardMaterial({color:0xffd23f, metalness:0.7, roughness:0.25, emissive:0xaa7a00, emissiveIntensity:0.25});
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.55,0.22,12), gold);
+    crown.add(band);
+    for(let i=0;i<6;i++){
+      const a = (i/6)*Math.PI*2;
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.1,0.32,6), gold);
+      spike.position.set(Math.cos(a)*0.48, 0.24, Math.sin(a)*0.48);
+      crown.add(spike);
+      const jewel = new THREE.Mesh(new THREE.SphereGeometry(0.06,8,8), new THREE.MeshStandardMaterial({color:0xff2ea6, emissive:0xff2ea6, emissiveIntensity:0.6}));
+      jewel.position.set(Math.cos(a)*0.48, 0.42, Math.sin(a)*0.48);
+      crown.add(jewel);
+    }
+    crown.position.set(0, 1.35, 0);
+    drone.add(crown);
+    droneUpgradeExtras.crown = crown;
+  }
+
+  sfxLevelUp();
+  showMessage(DRONE_TIER_NAMES[tier], 'good', 2800);
+  burstConfetti(drone.position.clone());
+}
+
+/* ---------- engine trail (always on; turns rainbow at tier 2+) ---------- */
+const TRAIL_COUNT = 30;
+const trailTexture = (function(){
+  const c = document.createElement('canvas'); c.width=c.height=32;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(16,16,0,16,16,16);
+  g.addColorStop(0,'rgba(255,255,255,0.95)');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,32,32);
+  return new THREE.CanvasTexture(c);
+})();
+const trailPool = [];
+for(let i=0;i<TRAIL_COUNT;i++){
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({map:trailTexture, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false, color:0x8fd0ff}));
+  spr.scale.set(0.01,0.01,1);
+  spr.visible = false;
+  scene.add(spr);
+  trailPool.push({spr, age:999, life:0.55});
+}
+let trailSpawnTimer = 0, trailIndex = 0;
+const _trailTail = new THREE.Vector3();
+
+function updateDroneTrail(dt){
+  if(droneUpgradeExtras.crown){
+    droneUpgradeExtras.crown.rotation.y += dt*0.8;
+  }
+  if(droneUpgradeExtras.minis){
+    droneUpgradeExtras.minis.forEach(mini=>{
+      mini.arms.forEach(p=> p.rotation.y += dt*50);
+    });
+  }
+  trailSpawnTimer -= dt;
+  if(trailSpawnTimer<=0 && currentSpeedFrac>0.1){
+    trailSpawnTimer = 0.035;
+    const slot = trailPool[trailIndex]; trailIndex = (trailIndex+1)%TRAIL_COUNT;
+    _trailTail.set(0,-0.1,-1.3);
+    drone.localToWorld(_trailTail);
+    slot.spr.position.copy(_trailTail);
+    slot.age = 0;
+    slot.spr.visible = true;
+    slot.spr.material.opacity = 0.85;
+    slot.spr.scale.set(0.9,0.9,1);
+  }
+  const hue = (performance.now()/12)%360;
+  trailPool.forEach(slot=>{
+    if(!slot.spr.visible) return;
+    slot.age += dt;
+    const t = slot.age/slot.life;
+    if(t>=1){ slot.spr.visible=false; return; }
+    slot.spr.material.opacity = 0.85*(1-t);
+    const s = 0.9 + t*1.6;
+    slot.spr.scale.set(s,s,1);
+    if(droneTier>=2) slot.spr.material.color.setHSL(hue/360,1,0.6);
+    else slot.spr.material.color.set(0x8fd0ff);
   });
 }
 
@@ -1214,6 +1486,7 @@ function sfxThud(){ beep(90,0.14,'sine',0.22,0); noiseBurst(0.08,0.12,500); }
 function sfxChimeNear(){ beep(980,0.09,'sine',0.1,0); }
 function sfxChimeReady(){ beep(880,0.08,'triangle',0.14,0); beep(1180,0.12,'triangle',0.14,0.06); }
 function sfxClick(){ beep(500,0.05,'square',0.1,0); }
+function sfxLevelUp(){ beep(523,0.1,'triangle',0.2,0); beep(659,0.1,'triangle',0.2,0.09); beep(784,0.14,'triangle',0.22,0.18); beep(1046,0.24,'triangle',0.26,0.3); }
 
 /* ---------- procedural background music (looping, all synthesized) ---------- */
 const MUSIC_STYLES = {
@@ -1239,19 +1512,59 @@ const MUSIC_STYLES = {
     bassWave:'square', leadWave:'square', kickSteps:[0,2,4,6,8,10,12,14], hatEvery:1
   },
   cyberpunk: {
-    label:'Cyberpunk', bpm:100,
+    label:'Funky', bpm:100,
     chords:[110.00,87.31,130.81,98.00],             // Am - F - C - G, moody minor progression
     scale:[220.00,246.94,261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25], // A natural minor
     riffs:[[0,2,4,2,0,3,5,3],[5,3,2,0,2,4,3,2],[0,4,7,4,0,2,4,2],[2,0,7,5,2,0,4,2]],
     bassWave:'sawtooth', leadWave:'sawtooth', kickSteps:[0,8], hatEvery:2, pad:true
   }
 };
-let musicStyleKey = 'retro';
+let musicStyleKey = 'cyberpunk';
 let musicBarCount = 0;
 let musicStarted = false;
 
+/* ---------- Classical: a mellow rendition of Beethoven's "Ode to Joy"
+   (Symphony No. 9, public domain) — melody with a soft sustained pad,
+   played as a slow, gentle looping phrase rather than a bar-based riff ---------- */
+const C4=261.63, D4=293.66, E4=329.63, F4=349.23, G4=392.00, G3=196.00;
+const ODE_TO_JOY = [
+  [E4,1],[E4,1],[F4,1],[G4,1], [G4,1],[F4,1],[E4,1],[D4,1],
+  [C4,1],[C4,1],[D4,1],[E4,1], [E4,1.5],[D4,0.5],[D4,2],
+
+  [E4,1],[E4,1],[F4,1],[G4,1], [G4,1],[F4,1],[E4,1],[D4,1],
+  [C4,1],[C4,1],[D4,1],[E4,1], [D4,1.5],[C4,0.5],[C4,2],
+
+  [D4,1],[D4,1],[E4,1],[C4,1], [D4,1],[E4,0.5],[F4,0.5],[E4,1],[C4,1],
+  [D4,1],[E4,0.5],[F4,0.5],[E4,1],[D4,1], [C4,1],[D4,1],[G3,2],
+
+  [E4,1],[E4,1],[F4,1],[G4,1], [G4,1],[F4,1],[E4,1],[D4,1],
+  [C4,1],[C4,1],[D4,1],[E4,1], [D4,1.5],[C4,0.5],[C4,2]
+];
+const CLASSICAL_BPM = 78;
+const CLASSICAL_CHORD_ROOTS = [130.81,130.81,196.00,130.81]; // C - C - G - C bass, soft
+
+function scheduleClassicalPhrase(){
+  const beatSec = 60/CLASSICAL_BPM;
+  let t = 0;
+  ODE_TO_JOY.forEach(([freq, beats])=>{
+    if(freq){
+      beep(freq, beats*beatSec*0.92, 'sine', 0.1, t, 'music');
+      beep(freq*1.004, beats*beatSec*0.92, 'triangle', 0.045, t, 'music'); // gentle chorus/warmth
+    }
+    t += beats*beatSec;
+  });
+  const totalBeats = ODE_TO_JOY.reduce((s,[,b])=>s+b, 0);
+  const padCount = Math.ceil(totalBeats/4);
+  for(let i=0;i<padCount;i++){
+    const root = CLASSICAL_CHORD_ROOTS[i % CLASSICAL_CHORD_ROOTS.length];
+    beep(root, 4*beatSec*0.95, 'sine', 0.032, i*4*beatSec, 'music');
+  }
+  setTimeout(scheduleMusicBar, totalBeats*beatSec*1000);
+}
+
 function scheduleMusicBar(){
   if(!musicStarted) return;
+  if(musicStyleKey === 'classical'){ scheduleClassicalPhrase(); return; }
   const style = MUSIC_STYLES[musicStyleKey];
   if(!style){ setTimeout(scheduleMusicBar, 600); return; }
   const barStep = 60/style.bpm/4;
@@ -1314,6 +1627,7 @@ introMuteBtn.addEventListener('click', ()=> setMuted(!audioMuted, true));
 const state = {
   running:false,
   score:0,
+  streak:0,
   carrying:false,
   delivering:false,
   problem:null,
@@ -1338,7 +1652,39 @@ function chooseDepot(){
   return idx;
 }
 
-function generateProblem(){
+function startNewRound(){
+  // clear previous depot marker
+  if(state.depotIdx>=0 && decoys[state.depotIdx]){
+    decoys[state.depotIdx].pkgSign.material.opacity = 0;
+    decoys[state.depotIdx].isDepot = false;
+  }
+  state.lastDepotIdx = state.depotIdx;
+  const newDepotIdx = chooseDepot();
+  state.depotIdx = newDepotIdx;
+  const depot = decoys[newDepotIdx];
+  depot.isDepot = true;
+  depot.pkgSign.material.opacity = 1;
+
+  if(packageMesh){
+    if(packageMesh.parent) packageMesh.parent.remove(packageMesh);
+  }
+  packageMesh = makePackageMesh();
+  packageMesh.position.set(depot.worldPos.x, 0.85, depot.worldPos.z);
+  packageMesh.scale.setScalar(1);
+  scene.add(packageMesh);
+
+  state.problem = null;
+  state.carrying = false;
+  state.atDepotReady = true;
+  state.called = false;
+  hideCallBubble();
+  document.getElementById('problemCard').classList.add('hidden');
+}
+
+// The actual multiplication problem isn't decided until the package is
+// actually picked up — this lets the player change the number settings
+// any time right up until pickup, not just between rounds.
+function finalizeProblem(){
   const tables = Array.from(selectedTables);
   const a = pick(tables.length? tables : [2,3,4,5,6,7,8,9]);
   const b = randInt(2,9);
@@ -1370,32 +1716,6 @@ function generateProblem(){
   state.correctHouseIdx = correctIdx;
 
   document.getElementById('problemText').textContent = `${a} \u00D7 ${b} = ?`;
-
-  // clear previous depot marker
-  if(state.depotIdx>=0 && decoys[state.depotIdx]){
-    decoys[state.depotIdx].pkgSign.material.opacity = 0;
-    decoys[state.depotIdx].isDepot = false;
-  }
-  state.lastDepotIdx = state.depotIdx;
-  const newDepotIdx = chooseDepot();
-  state.depotIdx = newDepotIdx;
-  const depot = decoys[newDepotIdx];
-  depot.isDepot = true;
-  depot.pkgSign.material.opacity = 1;
-
-  if(packageMesh){
-    if(packageMesh.parent) packageMesh.parent.remove(packageMesh);
-  }
-  packageMesh = makePackageMesh();
-  packageMesh.position.set(depot.worldPos.x, 0.85, depot.worldPos.z);
-  packageMesh.scale.setScalar(1);
-  scene.add(packageMesh);
-
-  state.carrying = false;
-  state.atDepotReady = true;
-  state.called = false;
-  hideCallBubble();
-  document.getElementById('problemCard').classList.add('hidden');
 }
 
 function showMessage(text, cls, holdMs=2200){
@@ -1408,7 +1728,7 @@ function showMessage(text, cls, holdMs=2200){
 function hideCallBubble(){ document.getElementById('callBubble').style.display = 'none'; }
 
 /* ============================================================
-   INPUT (keyboard + on-screen keypad, unified)
+   INPUT (keyboard + touch drag joystick, unified)
 ============================================================ */
 const keys = {fwd:false,back:false,left:false,right:false};
 let spacePressed = false;
@@ -1432,18 +1752,61 @@ window.addEventListener('keyup', (e)=>{
   }
 });
 
-function bindHold(el, onDown, onUp){
-  const down = (e)=>{ e.preventDefault(); el.classList.add('pressed'); onDown(); };
-  const up = (e)=>{ e.preventDefault(); el.classList.remove('pressed'); onUp(); };
-  el.addEventListener('pointerdown', down);
-  el.addEventListener('pointerup', up);
-  el.addEventListener('pointerleave', up);
-  el.addEventListener('pointercancel', up);
+// Floating drag joystick — touch/click anywhere on the left half of the
+// screen, then drag: up/down controls thrust, left/right controls turning.
+// The joystick base appears wherever the touch started (Roblox-style),
+// not pinned to a fixed spot.
+let joyActive = false;
+let joyOriginX = 0, joyOriginY = 0;
+let joyThrust = 0, joyTurn = 0; // both in range -1..1
+const JOY_MAX = 55; // px of drag for full deflection
+let joyPointerId = null;
+
+const joystickZone = document.getElementById('joystickZone');
+const joystickBase = document.getElementById('joystickBase');
+const joystickStick = document.getElementById('joystickStick');
+
+function joyShow(x,y){
+  joystickBase.style.left = x+'px'; joystickBase.style.top = y+'px';
+  joystickStick.style.left = x+'px'; joystickStick.style.top = y+'px';
+  joystickBase.style.display = 'block';
+  joystickStick.style.display = 'block';
 }
-bindHold(document.getElementById('kUp'),    ()=>keys.fwd=true,   ()=>keys.fwd=false);
-bindHold(document.getElementById('kDown'),  ()=>keys.back=true,  ()=>keys.back=false);
-bindHold(document.getElementById('kLeft'),  ()=>keys.left=true,  ()=>keys.left=false);
-bindHold(document.getElementById('kRight'), ()=>keys.right=true, ()=>keys.right=false);
+function joyHide(){
+  joystickBase.style.display = 'none';
+  joystickStick.style.display = 'none';
+}
+function joyUpdateFromPointer(x,y){
+  let dx = x-joyOriginX, dy = y-joyOriginY;
+  const dist = Math.hypot(dx,dy);
+  if(dist > JOY_MAX){ dx = dx/dist*JOY_MAX; dy = dy/dist*JOY_MAX; }
+  joystickStick.style.left = (joyOriginX+dx)+'px';
+  joystickStick.style.top = (joyOriginY+dy)+'px';
+  joyThrust = THREE.MathUtils.clamp(-dy/JOY_MAX, -1, 1); // drag up = forward
+  joyTurn = THREE.MathUtils.clamp(dx/JOY_MAX, -1, 1);    // drag right = turn right
+}
+joystickZone.addEventListener('pointerdown', (e)=>{
+  joyActive = true;
+  joyPointerId = e.pointerId;
+  joyOriginX = e.clientX; joyOriginY = e.clientY;
+  joyThrust = 0; joyTurn = 0;
+  joyShow(joyOriginX, joyOriginY);
+  joystickZone.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+joystickZone.addEventListener('pointermove', (e)=>{
+  if(!joyActive || e.pointerId!==joyPointerId) return;
+  joyUpdateFromPointer(e.clientX, e.clientY);
+  e.preventDefault();
+});
+function joyEnd(e){
+  if(e && e.pointerId!==joyPointerId) return;
+  joyActive = false;
+  joyThrust = 0; joyTurn = 0;
+  joyHide();
+}
+joystickZone.addEventListener('pointerup', joyEnd);
+joystickZone.addEventListener('pointercancel', joyEnd);
 
 const actionBtn = document.getElementById('actionBtn');
 actionBtn.addEventListener('pointerdown', (e)=>{ e.preventDefault(); actionBtn.classList.add('pressed'); handleAction(); });
@@ -1477,6 +1840,7 @@ function handleAction(){
           packageMesh.scale.setScalar(0.8);
           packageMesh.rotation.set(0,0,0);
           packageVelocity.set(0,0,0);
+          finalizeProblem();
           state.carrying = true;
           state.pickupTime = performance.now();
           state.called = false;
@@ -1527,16 +1891,22 @@ function resolveDelivery(idx, correct){
   if(correct){
     sfxCorrect();
     state.score++;
+    state.streak++;
     document.getElementById('scoreText').textContent = state.score;
+    updateStreakBadge();
+    const tierIdx = DRONE_TIER_STREAKS.indexOf(state.streak);
+    if(tierIdx>=0) applyDroneTier(tierIdx+1);
     showMessage(`✅ ${state.problem.a} \u00D7 ${state.problem.b} = ${state.problem.correct}! Delivered!`, 'good', 2600);
     burstConfetti(new THREE.Vector3(house.worldPos.x, house.roofY, house.worldPos.z));
     state.carrying = false;
     state.delivering = false;
     document.getElementById('problemCard').classList.add('hidden');
     hideCallBubble();
-    setTimeout(()=>{ if(state.running) generateProblem(); }, 1700);
+    setTimeout(()=>{ if(state.running) startNewRound(); }, 1700);
   } else {
     sfxWrong();
+    state.streak = 0;
+    updateStreakBadge();
     showMessage(`🤔 "This is not my package!" — try another house.`, 'bad', 2200);
     setTimeout(()=>{
       const startPos = packageMesh.position.clone();
@@ -1617,7 +1987,13 @@ for(let n=2;n<=9;n++){
   btn.dataset.n = n;
   btn.addEventListener('click', ()=>{
     sfxClick();
-    if(selectedTables.has(n)){
+    const allSelected = selectedTables.size === 8;
+    if(allSelected){
+      // everything was selected — treat the first tap as "practice just this one"
+      // instead of deselecting it and leaving the other seven active
+      selectedTables = new Set([n]);
+      [...tableGrid.children].forEach(b=> b.classList.toggle('active', Number(b.dataset.n)===n));
+    } else if(selectedTables.has(n)){
       if(selectedTables.size>1){ selectedTables.delete(n); btn.classList.remove('active'); }
     } else {
       selectedTables.add(n); btn.classList.add('active');
@@ -1671,7 +2047,7 @@ document.getElementById('startBtn').addEventListener('click', ()=>{
   startMusic();
   document.getElementById('intro').style.display = 'none';
   state.running = true;
-  generateProblem();
+  startNewRound();
 });
 
 /* ============================================================
@@ -1686,10 +2062,10 @@ const MAP_C = MAP_SIZE/2;
 
 function drawMap(){
   mctx.clearRect(0,0,MAP_SIZE,MAP_SIZE);
-  mctx.fillStyle = '#0c0818';
+  mctx.fillStyle = '#dff0d8';
   mctx.fillRect(0,0,MAP_SIZE,MAP_SIZE);
 
-  mctx.strokeStyle = 'rgba(0,234,255,0.35)'; mctx.lineWidth = 2;
+  mctx.strokeStyle = '#c9c9cd'; mctx.lineWidth = 3;
   for(let c=0;c<GRID_COLS-1;c++){
     const x = MAP_C + (((c-(GRID_COLS-1)/2)+0.5)*SPACING)*MAP_SCALE;
     mctx.beginPath(); mctx.moveTo(x,0); mctx.lineTo(x,MAP_SIZE); mctx.stroke();
@@ -1702,7 +2078,7 @@ function drawMap(){
   decoys.forEach(dcy=>{
     const mx = MAP_C + dcy.worldPos.x*MAP_SCALE;
     const my = MAP_C + dcy.worldPos.z*MAP_SCALE;
-    mctx.fillStyle = dcy.isDepot ? '#ff2ea6' : '#3a3550';
+    mctx.fillStyle = dcy.isDepot ? '#f2c94c' : '#b7b0a0';
     mctx.beginPath(); mctx.arc(mx,my,dcy.isDepot?6:4,0,7); mctx.fill();
     if(dcy.isDepot){
       mctx.strokeStyle='#fff'; mctx.lineWidth=2; mctx.stroke();
@@ -1715,10 +2091,10 @@ function drawMap(){
   houses.forEach((h,i)=>{
     const mx = MAP_C + h.worldPos.x*MAP_SCALE;
     const my = MAP_C + h.worldPos.z*MAP_SCALE;
-    mctx.fillStyle = i===state.correctHouseIdx && state.called ? '#ffe74c' : '#00b8d4';
+    mctx.fillStyle = i===state.correctHouseIdx && state.called ? '#ff6b5b' : '#5a7fa6';
     mctx.beginPath(); mctx.arc(mx,my,5,0,7); mctx.fill();
     if(state.carrying){
-      mctx.fillStyle = '#eaf6ff';
+      mctx.fillStyle = '#22303b';
       mctx.font = '8px Arial';
       mctx.textAlign='center';
       mctx.fillText(String(h.number ?? ''), mx, my-8);
@@ -1730,7 +2106,7 @@ function drawMap(){
   mctx.save();
   mctx.translate(dx,dy);
   mctx.rotate(Math.PI - drone.rotation.y);
-  mctx.fillStyle = '#00eaff';
+  mctx.fillStyle = '#3e6fe0';
   mctx.beginPath();
   mctx.moveTo(0,-7); mctx.lineTo(5,6); mctx.lineTo(-5,6); mctx.closePath(); mctx.fill();
   mctx.restore();
@@ -1740,7 +2116,7 @@ function drawMap(){
     const mx = MAP_C + h.worldPos.x*MAP_SCALE;
     const my = MAP_C + h.worldPos.z*MAP_SCALE;
     const pulse = 8 + 4*Math.sin(performance.now()/160);
-    mctx.strokeStyle = 'rgba(255,231,76,0.85)';
+    mctx.strokeStyle = 'rgba(255,107,91,0.85)';
     mctx.lineWidth = 2;
     mctx.beginPath(); mctx.arc(mx,my,pulse,0,7); mctx.stroke();
     const blinkOn = Math.floor(performance.now()/280)%2===0;
@@ -1793,17 +2169,34 @@ let yaw = Math.PI;
 let velocity = new THREE.Vector3();
 const clock = new THREE.Clock();
 
+let throttleTime = 0;
 function updateDrone(dt){
   const turnSpeed = 3.0;
-  const thrust = 60;
+  const thrustMax = 60;
 
-  if(keys.left) yaw += turnSpeed*dt;
-  if(keys.right) yaw -= turnSpeed*dt;
+  // combine keyboard (digital) and joystick (analog) input into one
+  // continuous -1..1 value for each axis
+  let thrustInput = (keys.fwd?1:0) - (keys.back?1:0);
+  let turnInput = (keys.left?1:0) - (keys.right?1:0);
+  if(joyActive){
+    thrustInput = THREE.MathUtils.clamp(thrustInput + joyThrust, -1, 1);
+    turnInput = THREE.MathUtils.clamp(turnInput - joyTurn, -1, 1);
+  }
+
+  // spool-up: thrust ramps up the longer you hold it, so acceleration
+  // builds and feels like the drone is really picking up speed rather
+  // than snapping instantly to full power; it decays quickly on release
+  if(Math.abs(thrustInput) > 0.05) throttleTime = Math.min(throttleTime + dt, 1.2);
+  else throttleTime = Math.max(throttleTime - dt*2.4, 0);
+  const rampRaw = Math.min(throttleTime/1.1, 1);
+  const ramp = 1 - Math.pow(1-rampRaw, 2);
+  const thrust = thrustMax * (0.4 + 0.6*ramp);
+
+  yaw += turnSpeed*dt*turnInput;
 
   const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
   let accel = new THREE.Vector3();
-  if(keys.fwd) accel.addScaledVector(forward, thrust);
-  if(keys.back) accel.addScaledVector(forward, -thrust);
+  accel.addScaledVector(forward, thrust*thrustInput);
 
   velocity.addScaledVector(accel, dt);
   velocity.multiplyScalar(Math.pow(0.06, dt));
@@ -1818,10 +2211,9 @@ function updateDrone(dt){
   drone.rotation.y = THREE.MathUtils.lerp(drone.rotation.y, yaw, 1-Math.pow(0.001,dt));
 
   const speed = velocity.length();
-  const turnInput = (keys.left?1:0) - (keys.right?1:0);
   const targetBank = -turnInput*0.5;
   drone.rotation.z = THREE.MathUtils.lerp(drone.rotation.z, targetBank, 1-Math.pow(0.001,dt));
-  const targetPitch = (keys.fwd?1:keys.back?-1:0) * Math.min(speed/26,1) * 0.28;
+  const targetPitch = thrustInput * Math.min(speed/26,1) * 0.28;
   drone.rotation.x = THREE.MathUtils.lerp(drone.rotation.x, -targetPitch, 1-Math.pow(0.001,dt));
 
   arms.forEach(p=> p.rotation.y += dt*(28 + speed*2.2));
@@ -1843,6 +2235,12 @@ function updateCamera(dt){
     drone.position.z + forward.z*5
   );
   camera.lookAt(lookTarget);
+
+  // widen the field of view as speed builds — a classic "sense of speed"
+  // trick that makes acceleration feel more dramatic
+  const targetFov = 64 + currentSpeedFrac*12;
+  camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 1-Math.pow(0.0005,dt));
+  camera.updateProjectionMatrix();
 }
 
 function updateClouds(dt){
@@ -1864,6 +2262,7 @@ function animate(){
     updateCars(dt);
     updateMotes(dt);
     updateHangingPackage(dt);
+    updateDroneTrail(dt);
     checkCallTimeout();
     checkAutoActions();
     updateActionUI();
