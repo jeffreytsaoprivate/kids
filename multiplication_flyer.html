@@ -257,6 +257,13 @@
     <button id="musicToggleBtn" class="tbtn active" style="flex:1;">🎵 Music: On</button>
     <button id="sfxToggleBtn" class="tbtn active" style="flex:1;">🔔 SFX: On</button>
   </div>
+  <h3 style="margin-top:8px;">📷 Camera View</h3>
+  <div id="viewGrid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px;">
+    <button class="tbtn view-btn active" data-view="chase">Chase</button>
+    <button class="tbtn view-btn" data-view="wide">Wide</button>
+    <button class="tbtn view-btn" data-view="topdown">Top-Down</button>
+    <button class="tbtn view-btn" data-view="cockpit">Cockpit</button>
+  </div>
   <h3 style="margin-top:8px;">🏆 Progress</h3>
   <button id="resetScoreBtn" style="padding:8px 0; border-radius:8px; border:1px solid rgba(255,107,91,.5); background:#fff0ed; color:#a6392c; font-weight:700; font-family:'Fredoka',sans-serif; cursor:pointer; font-size:14px;">Reset Score</button>
 </div>
@@ -327,7 +334,8 @@ function saveSettings(){
       musicStyleKey,
       musicEnabled,
       sfxEnabled,
-      audioMuted
+      audioMuted,
+      cameraViewKey
     }));
   }catch(e){ /* storage unavailable — just play without persistence */ }
 }
@@ -354,7 +362,7 @@ renderer.toneMappingExposure = 1.12;
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0xd9c9a6, 0.0032);
 
-const camera = new THREE.PerspectiveCamera(66, window.innerWidth/window.innerHeight, 0.1, 1200);
+const camera = new THREE.PerspectiveCamera(64, window.innerWidth/window.innerHeight, 0.1, 1200);
 camera.position.set(0, 14, 40);
 
 function onResize(){
@@ -1304,6 +1312,46 @@ function applyDroneTier(tier){
   spawnUpgradeShockwave(drone.position.clone(), TIER_COLORS[tier] || 0xffffff);
 }
 
+// Strips all earned cosmetic upgrades and returns the drone to its basic
+// look — called when a wrong delivery breaks the streak, so the player
+// has to build the streak back up to re-earn each tier.
+function resetDroneTier(){
+  if(droneTier === 0) return false;
+  droneTier = 0;
+
+  if(droneUpgradeExtras.rotorRings){
+    droneUpgradeExtras.rotorRings.forEach(ringGroup=>{
+      drone.remove(ringGroup);
+      ringGroup.children.forEach(m=>{
+        m.geometry && m.geometry.dispose();
+        m.material && m.material.dispose();
+      });
+    });
+  }
+  if(droneUpgradeExtras.minis){
+    droneUpgradeExtras.minis.forEach(mini=>{
+      drone.remove(mini.group);
+      mini.group.traverse(obj=>{
+        if(obj.geometry) obj.geometry.dispose();
+        if(obj.material && obj.material !== droneBodyMat && obj.material !== droneAccentMat){
+          obj.material.dispose();
+        }
+      });
+    });
+  }
+  if(droneUpgradeExtras.crown){
+    drone.remove(droneUpgradeExtras.crown);
+    droneUpgradeExtras.crown.traverse(obj=>{
+      if(obj.geometry) obj.geometry.dispose();
+      if(obj.material) obj.material.dispose();
+    });
+  }
+  droneUpgradeExtras.rotorRings = null;
+  droneUpgradeExtras.minis = null;
+  droneUpgradeExtras.crown = null;
+  return true;
+}
+
 /* ---------- upgrade shockwave / flash FX (played on every tier unlock) ---------- */
 const upgradeFX = [];
 function spawnUpgradeShockwave(pos, color){
@@ -1398,18 +1446,25 @@ function updateDroneTrail(dt){
     slot.spr.visible = true;
     slot.spr.material.opacity = 0.85;
     slot.spr.scale.set(0.9,0.9,1);
+    // lock in this particle's color at spawn time — previously every
+    // visible particle was re-colored to the *same* hue every frame,
+    // which made the whole pool flicker in sync and could read as
+    // several overlapping trails instead of one smooth rainbow streak
+    if(droneTier>=2){
+      const hueNow = (performance.now()/12)%360;
+      slot.spr.material.color.setHSL(hueNow/360, 0.95, 0.42);
+    } else {
+      slot.spr.material.color.set(0x4fa9ff);
+    }
   }
-  const hue = (performance.now()/12)%360;
   trailPool.forEach(slot=>{
     if(!slot.spr.visible) return;
     slot.age += dt;
     const t = slot.age/slot.life;
     if(t>=1){ slot.spr.visible=false; return; }
     slot.spr.material.opacity = 0.85*(1-t);
-    const s = 0.9 + t*1.6;
+    const s = 0.9 + t*1.1;
     slot.spr.scale.set(s,s,1);
-    if(droneTier>=2) slot.spr.material.color.setHSL(hue/360,0.95,0.42);
-    else slot.spr.material.color.set(0x4fa9ff);
   });
 }
 
@@ -2110,7 +2165,12 @@ function resolveDelivery(idx, correct){
     sfxWrong();
     state.streak = 0;
     updateStreakBadge();
-    showMessage(`🤔 "This is not my package!" — try another house.`, 'bad', 2200);
+    const wasUpgraded = resetDroneTier();
+    if(wasUpgraded){
+      showMessage(`🤔 "This is not my package!" — and your drone lost its upgrades!`, 'bad', 2600);
+    } else {
+      showMessage(`🤔 "This is not my package!" — try another house.`, 'bad', 2200);
+    }
     setTimeout(()=>{
       const startPos = packageMesh.position.clone();
       const t0 = performance.now();
@@ -2257,6 +2317,15 @@ document.getElementById('resetScoreBtn').addEventListener('click', ()=>{
   document.getElementById('scoreText').textContent = 0;
   saveSettings();
   showMessage('🔄 Score reset!', 'info', 1800);
+});
+
+document.querySelectorAll('.view-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    sfxClick();
+    cameraViewKey = btn.dataset.view;
+    document.querySelectorAll('.view-btn').forEach(b=> b.classList.toggle('active', b===btn));
+    saveSettings();
+  });
 });
 
 document.getElementById('startBtn').addEventListener('click', ()=>{
@@ -2447,24 +2516,33 @@ function updateDrone(dt){
 }
 let currentSpeedFrac = 0;
 
+const CAMERA_VIEWS = {
+  chase:   {label:'Chase',    back:12, up:12, ahead:5, downOffset:-4,  fov:64, fovBoost:12},
+  wide:    {label:'Wide',     back:15, up:24, ahead:4, downOffset:-15, fov:66, fovBoost:12},
+  topdown: {label:'Top-Down', back:2,  up:60, ahead:0, downOffset:0,   fov:50, fovBoost:6},
+  cockpit: {label:'Cockpit',  back:6,  up:4,  ahead:9, downOffset:1,   fov:72, fovBoost:14}
+};
+let cameraViewKey = 'chase';
+
 function updateCamera(dt){
+  const view = CAMERA_VIEWS[cameraViewKey] || CAMERA_VIEWS.chase;
   const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
   const desired = new THREE.Vector3(
-    drone.position.x - forward.x*15,
-    drone.position.y + 24,
-    drone.position.z - forward.z*15
+    drone.position.x - forward.x*view.back,
+    drone.position.y + view.up,
+    drone.position.z - forward.z*view.back
   );
   camera.position.lerp(desired, 1-Math.pow(0.0002,dt));
   const lookTarget = new THREE.Vector3(
-    drone.position.x + forward.x*4,
-    drone.position.y - 15,
-    drone.position.z + forward.z*4
+    drone.position.x + forward.x*view.ahead,
+    drone.position.y + view.downOffset,
+    drone.position.z + forward.z*view.ahead
   );
   camera.lookAt(lookTarget);
 
   // widen the field of view as speed builds — a classic "sense of speed"
   // trick that makes acceleration feel more dramatic
-  const targetFov = 66 + currentSpeedFrac*12;
+  const targetFov = view.fov + currentSpeedFrac*view.fovBoost;
   camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 1-Math.pow(0.0005,dt));
   camera.updateProjectionMatrix();
 }
@@ -2518,6 +2596,10 @@ function animate(){
   if(saved.musicStyleKey){
     musicStyleKey = saved.musicStyleKey;
     document.querySelectorAll('.music-btn').forEach(b=> b.classList.toggle('active', b.dataset.style===musicStyleKey));
+  }
+  if(saved.cameraViewKey && CAMERA_VIEWS[saved.cameraViewKey]){
+    cameraViewKey = saved.cameraViewKey;
+    document.querySelectorAll('.view-btn').forEach(b=> b.classList.toggle('active', b.dataset.view===cameraViewKey));
   }
   if(typeof saved.musicEnabled === 'boolean'){
     musicEnabled = saved.musicEnabled;
