@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>SkyMath Delivery — Multiplication Drone Game</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
@@ -24,6 +24,7 @@
     font-family:'Baloo 2','Fredoka',sans-serif; color:var(--ink);
     background:#1a2a3a;
     -webkit-user-select:none; user-select:none;
+    touch-action:none; overscroll-behavior:none;
   }
   #canvas-wrap{position:fixed; inset:0;}
   canvas#three-canvas{display:block; width:100%; height:100%; touch-action:none; filter:contrast(1.07) saturate(1.14) brightness(1.02);}
@@ -353,7 +354,7 @@ renderer.toneMappingExposure = 1.12;
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0xd9c9a6, 0.0032);
 
-const camera = new THREE.PerspectiveCamera(64, window.innerWidth/window.innerHeight, 0.1, 1200);
+const camera = new THREE.PerspectiveCamera(66, window.innerWidth/window.innerHeight, 0.1, 1200);
 camera.position.set(0, 14, 40);
 
 function onResize(){
@@ -362,7 +363,22 @@ function onResize(){
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 window.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', ()=> setTimeout(onResize, 60));
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', onResize);
+  window.visualViewport.addEventListener('scroll', onResize);
+}
 onResize();
+
+// Belt-and-suspenders double-tap-zoom prevention for iOS Safari, where
+// touch-action alone doesn't always stop the built-in zoom gesture.
+let _lastTapTime = 0;
+document.addEventListener('touchend', (e)=>{
+  const now = Date.now();
+  if(now - _lastTapTime <= 350) e.preventDefault();
+  _lastTapTime = now;
+}, {passive:false});
+document.addEventListener('gesturestart', (e)=> e.preventDefault());
 
 /* ============================================================
    SKY
@@ -1349,7 +1365,7 @@ const trailTexture = (function(){
 })();
 const trailPool = [];
 for(let i=0;i<TRAIL_COUNT;i++){
-  const spr = new THREE.Sprite(new THREE.SpriteMaterial({map:trailTexture, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false, color:0x8fd0ff}));
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({map:trailTexture, transparent:true, opacity:0, depthWrite:false, color:0x8fd0ff}));
   spr.scale.set(0.01,0.01,1);
   spr.visible = false;
   scene.add(spr);
@@ -1392,8 +1408,8 @@ function updateDroneTrail(dt){
     slot.spr.material.opacity = 0.85*(1-t);
     const s = 0.9 + t*1.6;
     slot.spr.scale.set(s,s,1);
-    if(droneTier>=2) slot.spr.material.color.setHSL(hue/360,1,0.6);
-    else slot.spr.material.color.set(0x8fd0ff);
+    if(droneTier>=2) slot.spr.material.color.setHSL(hue/360,0.95,0.42);
+    else slot.spr.material.color.set(0x4fa9ff);
   });
 }
 
@@ -1523,6 +1539,32 @@ function ensureAudio(){
     audioReady = true;
   }catch(e){ audioReady = false; }
 }
+
+// iOS Safari sometimes leaves the AudioContext (and any nodes already
+// started against it) silently suspended even after resume() is called
+// mid-gesture — playing a truly silent buffer inside the same gesture is
+// the standard trick that reliably unlocks it. Hook this to the very
+// first touch/click/key anywhere on the page, not just the Start button,
+// so audio is unlocked as early as possible.
+let audioUnlockAttempted = false;
+function unlockAudioForIOS(){
+  audioUnlockAttempted = true;
+  ensureAudio();
+  if(!actx) return;
+  if(actx.state === 'suspended') actx.resume();
+  try{
+    const buf = actx.createBuffer(1, 1, 22050);
+    const src = actx.createBufferSource();
+    src.buffer = buf;
+    src.connect(actx.destination);
+    src.start(0);
+  }catch(e){}
+}
+['touchstart','touchend','mousedown','keydown'].forEach(evt=>{
+  document.addEventListener(evt, function onFirstGesture(){
+    unlockAudioForIOS();
+  }, {passive:true});
+});
 
 function updateEngineAudio(speedFrac){
   if(!audioReady) return;
@@ -2408,21 +2450,21 @@ let currentSpeedFrac = 0;
 function updateCamera(dt){
   const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
   const desired = new THREE.Vector3(
-    drone.position.x - forward.x*12,
-    drone.position.y + 12,
-    drone.position.z - forward.z*12
+    drone.position.x - forward.x*15,
+    drone.position.y + 24,
+    drone.position.z - forward.z*15
   );
   camera.position.lerp(desired, 1-Math.pow(0.0002,dt));
   const lookTarget = new THREE.Vector3(
-    drone.position.x + forward.x*5,
-    drone.position.y - 4,
-    drone.position.z + forward.z*5
+    drone.position.x + forward.x*4,
+    drone.position.y - 15,
+    drone.position.z + forward.z*4
   );
   camera.lookAt(lookTarget);
 
   // widen the field of view as speed builds — a classic "sense of speed"
   // trick that makes acceleration feel more dramatic
-  const targetFov = 64 + currentSpeedFrac*12;
+  const targetFov = 66 + currentSpeedFrac*12;
   camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 1-Math.pow(0.0005,dt));
   camera.updateProjectionMatrix();
 }
