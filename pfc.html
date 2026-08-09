@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -270,18 +271,14 @@
 <div class="label">
 
   <div class="masthead">
-    <div class="eyebrow">Macro Breakdown</div>
+    <div class="eyebrow">Protein, Fat, Carbohydrates</div>
     <h1>PFC</h1>
-    <div class="sub">Enter grams below to see the calorie split.</div>
+    <div class="sub">Enter grams of macro-nutrients below to see calorie split.</div>
   </div>
 
   <div class="rows">
-    <div class="row thick">
-      <div class="row-label"><span class="swatch protein"></span>Protein</div>
-      <div class="amount"><input type="number" id="protein" value="0" min="0" inputmode="decimal"><span class="unit">g</span></div>
-    </div>
 
-    <div class="row">
+    <div class="row thick">
       <div class="row-label"><span class="swatch fat"></span>Fat</div>
       <div class="amount"><input type="number" id="fat" value="0" min="0" inputmode="decimal"><span class="unit">g</span></div>
     </div>
@@ -294,6 +291,10 @@
     <div class="row sub-row thick">
       <div class="row-label"><span class="swatch fiber"></span>Fiber</div>
       <div class="amount"><input type="number" id="fiber" value="0" min="0" inputmode="decimal"><span class="unit">g</span></div>
+    </div>
+    <div class="row">
+      <div class="row-label"><span class="swatch protein"></span>Protein</div>
+      <div class="amount"><input type="number" id="protein" value="0" min="0" inputmode="decimal"><span class="unit">g</span></div>
     </div>
   </div>
 
@@ -311,7 +312,7 @@
     <div class="status-text" id="statusText"><b>—</b>Enter values to check the carb guideline.</div>
   </div>
 
-  <div class="footnote">Guideline check compares the carb share of total calories against a 25% reference line. Inner ring shading: green within guideline, amber within 10%, red outside guideline.</div>
+  <div class="footnote">Guideline check compares the carb share of total calories against a 25% reference line.</div>
 
 </div>
 
@@ -391,7 +392,7 @@
         if (isEmpty) {
             ctx.font = '600 12px Helvetica, Arial, sans-serif';
             ctx.fillStyle = '#8a8a8a';
-            ctx.fillText('No data', x, y);
+            ctx.fillText('', x, y);
         } else {
             ctx.font = '800 20px Helvetica, Arial, sans-serif';
             ctx.fillText(Math.round(data[2]) + '%', x, y - 9);
