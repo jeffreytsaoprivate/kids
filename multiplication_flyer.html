@@ -68,6 +68,27 @@
   #msgBanner.call{background:rgba(255,180,50,.95); color:#3a2400;}
   #msgBanner.info{background:rgba(62,111,224,.92);}
 
+  /* ---------- Pickup direction compass ---------- */
+  #pickupArrow{
+    position:fixed; top:150px; left:50%; transform:translateX(-50%);
+    z-index:21; display:none; flex-direction:column; align-items:center; gap:2px;
+    pointer-events:none;
+  }
+  #pickupArrow.show{display:flex;}
+  #pickupArrowIcon{
+    font-size:38px; filter:drop-shadow(0 3px 4px rgba(0,0,0,.35));
+    transition:transform .12s ease-out;
+    animation:pickupBob 1s ease-in-out infinite;
+  }
+  #pickupArrowLabel{
+    background:rgba(20,30,40,.72); color:#fff; font-weight:700;
+    font-family:'Fredoka',sans-serif; font-size:12.5px;
+    padding:4px 12px; border-radius:12px;
+  }
+  @keyframes pickupBob{
+    0%,100%{ margin-top:0; } 50%{ margin-top:-6px; }
+  }
+
   /* ---------- Score ---------- */
   #scoreBox{
     position:fixed; top:16px; right:16px; z-index:20;
@@ -122,6 +143,7 @@
     background:var(--sky-mid); font-weight:700; font-family:'Fredoka',sans-serif;
     cursor:pointer; font-size:14px;
   }
+  #allBtn.active{background:var(--leaf); border-color:#3a9a49; color:#fff;}
   #settingsHint{font-size:12px; color:#6b5f45; line-height:1.35;}
 
   /* ---------- Minimap ---------- */
@@ -162,18 +184,19 @@
 
   #actionBtn{
     position:fixed; right:22px; bottom:64px; z-index:25;
-    width:92px; height:92px; border-radius:50%;
-    background:linear-gradient(180deg,#ff8a72,var(--coral)); color:#fff;
-    border:4px solid #fff; box-shadow:0 8px 0 #c8493a;
-    font-family:'Fredoka',sans-serif; font-weight:700; font-size:14px;
+    width:140px; height:140px; border-radius:50%;
+    background:rgba(255,255,255,0.28); backdrop-filter:blur(4px); color:#fff;
+    border:4px solid rgba(255,255,255,0.85); box-shadow:0 8px 0 rgba(255,255,255,0.35), 0 10px 26px rgba(20,40,60,.28);
+    font-family:'Fredoka',sans-serif; font-weight:700; font-size:16px;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
     cursor:pointer; touch-action:none;
   }
-  #actionBtn .ic{font-size:30px;}
-  #actionBtn:active, #actionBtn.pressed{transform:translateY(6px); box-shadow:0 2px 0 #c8493a;}
+  #actionBtn .ic{font-size:42px;}
+  #actionBtn:active, #actionBtn.pressed{transform:translateY(6px); box-shadow:0 2px 0 rgba(255,255,255,0.35), 0 10px 26px rgba(20,40,60,.28);}
   #actionBtn.ready{
-    background:linear-gradient(180deg,#8ef07a,var(--leaf));
-    box-shadow:0 8px 0 #2f8f3d;
+    background:rgba(142,240,122,0.4);
+    border-color:rgba(255,255,255,0.95);
+    box-shadow:0 8px 0 rgba(47,143,61,0.4), 0 10px 26px rgba(20,40,60,.28);
     animation:pulseReady 0.9s infinite;
   }
   @keyframes pulseReady{
@@ -220,7 +243,7 @@
   }
 
   @media (max-width:640px){
-    #actionBtn{ bottom:34px; width:80px; height:80px; }
+    #actionBtn{ bottom:34px; width:112px; height:112px; }
     #controlsHint{ display:none; }
   }
 </style>
@@ -235,15 +258,28 @@
   <div id="msgBanner"></div>
 </div>
 
+<div id="pickupArrow">
+  <div id="pickupArrowIcon">⬆️</div>
+  <div id="pickupArrowLabel">📦 Go pick up the package</div>
+</div>
+
 <div id="scoreBox"><span class="star">⭐</span><span id="scoreText">0</span><span id="streakBadge">🔥<span id="streakText">0</span></span></div>
 <button id="muteBtn" title="Mute/unmute sound">🔊</button>
 
 <button id="gearBtn" title="Choose tables">⚙️</button>
 <div id="settingsPanel">
-  <h3>Practice tables</h3>
-  <button id="allBtn">All numbers</button>
+  <h3>➗ Math operation</h3>
+  <div id="opGrid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px;">
+    <button class="tbtn op-btn active" data-op="mul">✕ Multiply</button>
+    <button class="tbtn op-btn" data-op="add">+ Add</button>
+    <button class="tbtn op-btn" data-op="sub">− Subtract</button>
+    <button class="tbtn op-btn" data-op="div">÷ Divide</button>
+    <button class="tbtn op-btn" data-op="all" style="grid-column:span 2;">🎲 All operations</button>
+  </div>
+  <h3 style="margin-top:8px;">Practice numbers</h3>
+  <button id="allBtn" class="active">All numbers</button>
   <div id="tableGrid"></div>
-  <div id="settingsHint">Pick one or more tables. New deliveries will use your choice.</div>
+  <div id="settingsHint">Pick a single number to practice, or tap "All numbers". New deliveries will use your choice.</div>
   <h3 style="margin-top:8px;">🎵 Music style</h3>
   <div id="musicGrid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px;">
     <button class="tbtn music-btn active" data-style="cyberpunk">Funky</button>
@@ -310,8 +346,8 @@ import * as THREE from "three";
    CONFIG
 ============================================================ */
 const HOUSE_COUNT = 9;
-const GRID_COLS = 4, GRID_ROWS = 4;
-const SPACING = 32;
+const GRID_COLS = 6, GRID_ROWS = 6;
+const SPACING = 27;
 const WORLD_HALF = 130;
 const CALL_TIMEOUT_MS = 60000;
 const ACT_RANGE = 13;       // pickup/delivery trigger radius — forgiving, no precise aim needed
@@ -319,6 +355,7 @@ const GLOW_RANGE = 26;      // house ring starts fading in within this radius wh
 const DRONE_ALT = 16;         // fixed flight altitude, no rise/descend
 
 let selectedTables = new Set([2,3,4,5,6,7,8,9]);
+let mathOperation = 'mul';
 
 /* ============================================================
    SAVE DATA (localStorage) — remembers settings and score between
@@ -331,6 +368,7 @@ function saveSettings(){
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       score: state.score,
       selectedTables: Array.from(selectedTables),
+      mathOperation,
       musicStyleKey,
       musicEnabled,
       sfxEnabled,
@@ -432,27 +470,6 @@ sunGlow.position.copy(sun.position);
 sunGlow.scale.set(160,160,1);
 scene.add(sunGlow);
 
-const cloudGroup = new THREE.Group();
-const cloudMat = new THREE.MeshStandardMaterial({color:0xffffff, roughness:1, flatShading:true});
-function makeCloud(){
-  const g = new THREE.Group();
-  const puffs = 3 + Math.floor(Math.random()*3);
-  for(let i=0;i<puffs;i++){
-    const s = new THREE.Mesh(new THREE.IcosahedronGeometry(3+Math.random()*2.5,0), cloudMat);
-    s.position.set((i-puffs/2)*3.6, Math.random()*1.5, Math.random()*2);
-    g.add(s);
-  }
-  return g;
-}
-for(let i=0;i<14;i++){
-  const c = makeCloud();
-  c.position.set((Math.random()-0.5)*400, 70+Math.random()*50, (Math.random()-0.5)*400);
-  c.scale.setScalar(1.5+Math.random()*2);
-  c.userData.speed = 0.4+Math.random()*0.6;
-  cloudGroup.add(c);
-}
-scene.add(cloudGroup);
-
 /* ============================================================
    LIGHTS
 ============================================================ */
@@ -482,25 +499,31 @@ scene.add(new THREE.AmbientLight(0xffffff,0.2));
 function grassTexture(){
   const c = document.createElement('canvas'); c.width=c.height=256;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#5fae52'; ctx.fillRect(0,0,256,256);
+  ctx.fillStyle = '#6fce5e'; ctx.fillRect(0,0,256,256);
   // soft patchy shading for uneven terrain
   for(let i=0;i<40;i++){
     const x=Math.random()*256, y=Math.random()*256, r=14+Math.random()*30;
-    ctx.fillStyle = Math.random()>0.5 ? 'rgba(70,140,60,0.35)' : 'rgba(120,190,100,0.3)';
+    ctx.fillStyle = Math.random()>0.5 ? 'rgba(80,190,70,0.35)' : 'rgba(150,230,120,0.3)';
     ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill();
   }
-  // small dirt/soil patches
-  for(let i=0;i<10;i++){
-    const x=Math.random()*256, y=Math.random()*256, r=4+Math.random()*8;
-    ctx.fillStyle = 'rgba(110,90,55,0.35)';
-    ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill();
+  // little flowers dotted around for a cute toy-world feel
+  const petalColors = ['#ff9ecb','#fff2a8','#a6e6ff','#ffffff'];
+  for(let i=0;i<26;i++){
+    const x=Math.random()*256, y=Math.random()*256;
+    ctx.fillStyle = petalColors[Math.floor(Math.random()*petalColors.length)];
+    for(let p=0;p<5;p++){
+      const a = (p/5)*Math.PI*2;
+      ctx.beginPath(); ctx.arc(x+Math.cos(a)*2.2, y+Math.sin(a)*2.2, 1.6, 0, 7); ctx.fill();
+    }
+    ctx.fillStyle = '#ffe15a';
+    ctx.beginPath(); ctx.arc(x,y,1.3,0,7); ctx.fill();
   }
   // individual grass-blade streaks for texture at close range
-  for(let i=0;i<1400;i++){
+  for(let i=0;i<1000;i++){
     const x=Math.random()*256, y=Math.random()*256;
     const len = 2+Math.random()*4;
     const lean = (Math.random()-0.5)*1.5;
-    ctx.strokeStyle = Math.random()>0.5 ? 'rgba(80,165,68,0.55)' : 'rgba(150,220,120,0.4)';
+    ctx.strokeStyle = Math.random()>0.5 ? 'rgba(90,190,78,0.5)' : 'rgba(170,235,140,0.4)';
     ctx.lineWidth = 0.8;
     ctx.beginPath();
     ctx.moveTo(x,y);
@@ -512,8 +535,29 @@ function grassTexture(){
   tex.repeat.set(24,24);
   return tex;
 }
+
+// simple layered-sine pseudo-noise (no external noise library needed) —
+// smooth and cheap, good enough for gentle stylized rolling hills
+function terrainNoise(x,z){
+  return Math.sin(x*0.05)*Math.cos(z*0.047) + Math.sin(x*0.021+1.7)*Math.cos(z*0.024-0.6)*1.4
+       + Math.sin((x+z)*0.013)*0.8;
+}
+const TOWN_FLAT_RADIUS = (Math.max(GRID_COLS,GRID_ROWS)/2)*SPACING + SPACING*1.1; // flat plateau under the whole town — keeps gameplay math simple
+const HILL_BLEND = 40; // distance over which hills ramp up beyond the plateau edge
+const groundGeo = new THREE.PlaneGeometry(WORLD_HALF*2.6, WORLD_HALF*2.6, 90, 90);
+{
+  const pos = groundGeo.attributes.position;
+  for(let i=0;i<pos.count;i++){
+    const lx = pos.getX(i), lz = -pos.getY(i); // plane will be rotated -90° on X, so local Y maps to world -Z
+    const d = Math.hypot(lx,lz);
+    const t = THREE.MathUtils.clamp((d-TOWN_FLAT_RADIUS)/HILL_BLEND, 0, 1);
+    const h = terrainNoise(lx,lz) * 3.2 * t;
+    pos.setZ(i, h); // Z here becomes world Y after rotation
+  }
+  groundGeo.computeVertexNormals();
+}
 const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(WORLD_HALF*2.4, WORLD_HALF*2.4, 1,1),
+  groundGeo,
   new THREE.MeshStandardMaterial({map:grassTexture(), roughness:1})
 );
 ground.rotation.x = -Math.PI/2;
@@ -523,12 +567,14 @@ scene.add(ground);
 /* ============================================================
    GRID LAYOUT
 ============================================================ */
-// Build cell list for a GRID_COLS x GRID_ROWS town grid.
+// Build cell list for a GRID_COLS x GRID_ROWS town grid, then jitter each
+// plot off the strict grid for a more organic, hand-placed village feel.
+const CELL_JITTER = SPACING*0.32;
 const cells = [];
 for(let r=0;r<GRID_ROWS;r++){
   for(let c=0;c<GRID_COLS;c++){
-    const x = (c - (GRID_COLS-1)/2) * SPACING;
-    const z = (r - (GRID_ROWS-1)/2) * SPACING;
+    const x = (c - (GRID_COLS-1)/2) * SPACING + (Math.random()-0.5)*CELL_JITTER;
+    const z = (r - (GRID_ROWS-1)/2) * SPACING + (Math.random()-0.5)*CELL_JITTER;
     cells.push({x,z});
   }
 }
@@ -539,7 +585,7 @@ for(let i=cells.length-1;i>0;i--){
 }
 const houseCells = cells.slice(0, HOUSE_COUNT);
 const remaining = cells.slice(HOUSE_COUNT);
-const PARK_COUNT = Math.min(2, remaining.length);
+const PARK_COUNT = Math.min(4, remaining.length);
 const parkCells = remaining.slice(0, PARK_COUNT);
 const decoyCells = remaining.slice(PARK_COUNT); // these can serve as the rotating pickup point
 
@@ -585,6 +631,8 @@ function asphaltTexture(){
 
 const roadMat = new THREE.MeshStandardMaterial({map:asphaltTexture(), color:0xcfcfd2, roughness:1});
 const roadSpan = (Math.max(GRID_COLS,GRID_ROWS))*SPACING + SPACING*1.3;
+
+const roads = [];
 function addRoad(isVertical, offset){
   const geo = isVertical
     ? new THREE.PlaneGeometry(6.2, roadSpan)
@@ -602,22 +650,38 @@ function addRoad(isVertical, offset){
     dash.position.set(isVertical?offset:d, 0.02, isVertical?d:offset);
     scene.add(dash);
   }
+  const road = {isVertical, base:offset};
+  roads.push(road);
+  return road;
 }
-const verticalRoadXs = [];
-const horizontalRoadZs = [];
 for(let c=0;c<GRID_COLS-1;c++){
   const x = ((c - (GRID_COLS-1)/2) + 0.5) * SPACING;
   addRoad(true, x);
-  verticalRoadXs.push(x);
 }
 for(let r=0;r<GRID_ROWS-1;r++){
   const z = ((r - (GRID_ROWS-1)/2) + 0.5) * SPACING;
   addRoad(false, z);
-  horizontalRoadZs.push(z);
+}
+
+// straight-road helpers (position/heading along a road at distance t)
+function roadPoint(road, t){
+  return road.isVertical ? {x:road.base, z:t} : {x:t, z:road.base};
+}
+function roadFrame(road, t){
+  return road.isVertical ? {nx:1, nz:0} : {nx:0, nz:1};
+}
+function roadHeading(road, t, dir){
+  if(road.isVertical) return dir>0 ? 0 : Math.PI;
+  return dir>0 ? Math.PI/2 : -Math.PI/2;
+}
+function placeOnRoad(obj, road, t, sideOffset){
+  const p = roadPoint(road, t);
+  const f = roadFrame(road, t);
+  obj.position.set(p.x + f.nx*sideOffset, 0, p.z + f.nz*sideOffset);
 }
 
 /* ============================================================
-   CARS (ambient traffic driving along the road grid)
+   CARS (ambient traffic driving along the road network)
 ============================================================ */
 const CAR_COLORS = [0xe4453c,0x3e6fe0,0xffd23f,0x4fbf5f,0xffffff,0xff8a3d,0x8a5adf,0x2b2b2b];
 function makeCar(color){
@@ -636,61 +700,230 @@ function makeCar(color){
     wh.position.set(wx,0.32,wz);
     g.add(wh);
   });
+  addContactShadow(g, 1.7, 1.1);
   return g;
 }
 const cars = [];
-const CAR_COUNT = 12;
+const CAR_COUNT = 20;
 for(let i=0;i<CAR_COUNT;i++){
-  const vertical = i%2===0;
-  const laneArr = vertical ? verticalRoadXs : horizontalRoadZs;
-  if(laneArr.length===0) continue;
-  const lane = laneArr[Math.floor(Math.random()*laneArr.length)];
+  const road = roads[Math.floor(Math.random()*roads.length)];
   const dir = Math.random()<0.5 ? 1 : -1;
-  const laneOffset = dir>0 ? 1.7 : -1.7; // drive on the correct side of the road
+  const laneSign = dir>0 ? 1 : -1; // drive on the correct side of the road
   const car = makeCar(CAR_COLORS[i%CAR_COLORS.length]);
-  const along = (Math.random()-0.5)*roadSpan;
-  if(vertical){
-    car.position.set(lane+laneOffset, 0, along);
-    car.rotation.y = dir>0 ? -Math.PI/2 : Math.PI/2;
-  } else {
-    car.position.set(along, 0, lane+laneOffset);
-    car.rotation.y = dir>0 ? 0 : Math.PI;
-  }
-  car.userData = { vertical, dir, speed: 6+Math.random()*5 };
+  const t = (Math.random()-0.5)*roadSpan;
+  car.userData = { road, dir, laneSign, t, speed: 6+Math.random()*5 };
   scene.add(car);
   cars.push(car);
 }
 function updateCars(dt){
   const half = roadSpan/2;
   cars.forEach(car=>{
-    const {vertical, dir, speed} = car.userData;
-    if(vertical){
-      car.position.z += dir*speed*dt;
-      if(car.position.z > half) car.position.z = -half;
-      if(car.position.z < -half) car.position.z = half;
+    const u = car.userData;
+    u.t += u.dir*u.speed*dt;
+    if(u.t > half) u.t = -half;
+    if(u.t < -half) u.t = half;
+    placeOnRoad(car, u.road, u.t, u.laneSign*1.7);
+    // the car model's own "front" faces local +X, not +Z, so offset
+    // the shared road-heading convention by -90°
+    car.rotation.y = roadHeading(u.road, u.t, u.dir) - Math.PI/2;
+  });
+}
+
+/* ============================================================
+   PEOPLE & DOGS — walk the sidewalks alongside the roads, and
+   occasionally dart across (checking traffic first)
+============================================================ */
+const SKIN_TONES = [0xffd9b0,0xf0b088,0xc98858,0x8a5a3a];
+const SHIRT_COLORS = [0xff6b5b,0x4fbf5f,0x4d8fe0,0xffd23f,0x9a6fe0,0xff9ecb];
+function makePerson(){
+  const g = new THREE.Group();
+  const skin = SKIN_TONES[Math.floor(Math.random()*SKIN_TONES.length)];
+  const shirt = SHIRT_COLORS[Math.floor(Math.random()*SHIRT_COLORS.length)];
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.34,0.55,4,8), new THREE.MeshStandardMaterial({color:shirt, roughness:0.7}));
+  body.position.y = 0.72; body.castShadow = true;
+  g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28,12,10), new THREE.MeshStandardMaterial({color:skin, roughness:0.6}));
+  head.position.y = 1.32; head.castShadow = true;
+  g.add(head);
+  const hairColors = [0x2b2019,0x5a3a24,0x8a5a3a,0xd9c07a,0x1a1a1a];
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.3,10,8,0,Math.PI*2,0,Math.PI/1.8), new THREE.MeshStandardMaterial({color:hairColors[Math.floor(Math.random()*hairColors.length)]}));
+  hair.position.y = 1.4;
+  g.add(hair);
+  const legMat = new THREE.MeshStandardMaterial({color:0x3a3a4a});
+  const legs = [];
+  [-0.13,0.13].forEach(lx=>{
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.09,0.34,4,6), legMat);
+    leg.position.set(lx,0.3,0);
+    g.add(leg);
+    legs.push(leg);
+  });
+  g.scale.setScalar(0.95+Math.random()*0.3);
+  addContactShadow(g, 0.5, 0.4);
+  return {group:g, legs};
+}
+
+function makeDog(){
+  const g = new THREE.Group();
+  const furColors = [0xc98a4b,0x8a6a4a,0xe8d9b8,0x3a2e22,0xf0f0f0];
+  const fur = furColors[Math.floor(Math.random()*furColors.length)];
+  const mat = new THREE.MeshStandardMaterial({color:fur, roughness:0.8});
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.22,0.5,4,8), mat);
+  body.rotation.z = Math.PI/2; body.position.y = 0.34; body.castShadow = true;
+  g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.19,10,8), mat);
+  head.position.set(0.42,0.4,0); head.castShadow = true;
+  g.add(head);
+  const snout = new THREE.Mesh(new THREE.CapsuleGeometry(0.07,0.12,4,6), mat);
+  snout.rotation.z = Math.PI/2; snout.position.set(0.58,0.36,0);
+  g.add(snout);
+  [-1,1].forEach(s=>{
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.07,0.16,6), mat);
+    ear.position.set(0.46, 0.54, s*0.13);
+    ear.rotation.z = 0.3*s;
+    g.add(ear);
+  });
+  const legMat = mat;
+  const legs = [];
+  [[-0.28,0.15],[-0.28,-0.15],[0.22,0.15],[0.22,-0.15]].forEach(([lx,lz])=>{
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.28,6), legMat);
+    leg.position.set(lx,0.14,lz);
+    g.add(leg);
+    legs.push(leg);
+  });
+  const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.045,0.22,4,6), mat);
+  tail.rotation.z = -0.9; tail.position.set(-0.42,0.5,0);
+  g.add(tail);
+  g.scale.setScalar(0.9+Math.random()*0.35);
+  addContactShadow(g, 0.55, 0.32);
+  return {group:g, legs};
+}
+
+const SIDEWALK_OFFSET = 4.6;
+const townsfolk = [];
+function spawnTownsfolk(){
+  function spawnOne(kind){
+    const road = roads[Math.floor(Math.random()*roads.length)];
+    const p = kind==='dog' ? makeDog() : makePerson();
+    const side = Math.random()<0.5 ? 1 : -1;
+    const t = (Math.random()-0.5)*roadSpan;
+    scene.add(p.group);
+    const entry = {
+      kind, ...p, road, side, t,
+      dir: Math.random()<0.5 ? 1 : -1,
+      speed: kind==='dog' ? 1.6+Math.random()*1.4 : 1.0+Math.random()*0.7,
+      state:'walk', crossProgress:0,
+      crossTimer: 3+Math.random()*6
+    };
+    placeOnRoad(p.group, road, t, side*SIDEWALK_OFFSET);
+    townsfolk.push(entry);
+  }
+  for(let i=0;i<20;i++) spawnOne('person');
+  for(let i=0;i<9;i++) spawnOne('dog');
+}
+spawnTownsfolk();
+
+function updateTownsfolk(dt){
+  const half = roadSpan/2;
+  townsfolk.forEach(p=>{
+    if(p.state==='cross'){
+      p.crossProgress += dt/1.6;
+      if(p.crossProgress>=1){
+        p.state='walk'; p.side*=-1; p.crossProgress=0;
+      }
     } else {
-      car.position.x += dir*speed*dt;
-      if(car.position.x > half) car.position.x = -half;
-      if(car.position.x < -half) car.position.x = half;
+      p.t += p.dir*p.speed*dt;
+      if(p.t>half){ p.t=-half; }
+      if(p.t<-half){ p.t=half; }
+      p.crossTimer -= dt;
+      if(p.crossTimer<=0){
+        p.crossTimer = 5+Math.random()*7;
+        // only cross if no car is nearby on this road
+        const laneClear = !cars.some(c=> c.userData.road===p.road && Math.abs(c.userData.t-p.t) < 9);
+        if(laneClear && Math.random()<0.5){ p.state='cross'; p.crossProgress=0; }
+      }
     }
+    const offset = p.state==='cross'
+      ? (p.side*SIDEWALK_OFFSET) + (-2*p.side*SIDEWALK_OFFSET)*p.crossProgress
+      : p.side*SIDEWALK_OFFSET;
+    placeOnRoad(p.group, p.road, p.t, offset);
+
+    let heading;
+    if(p.state==='cross'){
+      const f = roadFrame(p.road, p.t);
+      heading = Math.atan2(-p.side*f.nx, -p.side*f.nz);
+    } else {
+      heading = roadHeading(p.road, p.t, p.dir);
+    }
+    // dogs' model faces along local +X instead of +Z, so offset their heading
+    p.group.rotation.y = heading + (p.kind==='dog' ? -Math.PI/2 : 0);
+
+    const walkPhase = performance.now()/140;
+    p.group.position.y = Math.abs(Math.sin(walkPhase))*0.05;
+    p.legs.forEach((leg,i)=>{
+      leg.rotation.x = Math.sin(walkPhase + i*Math.PI)*0.5;
+    });
   });
 }
 
 /* ============================================================
    DECOR: trees
 ============================================================ */
+function leafTexture(baseHex){
+  return cachedTexture('leaf_'+baseHex, ()=>{
+    const size = 128;
+    const c = document.createElement('canvas'); c.width=c.height=size;
+    const ctx = c.getContext('2d');
+    const base = new THREE.Color(baseHex);
+    ctx.fillStyle = '#'+base.getHexString(); ctx.fillRect(0,0,size,size);
+    for(let i=0;i<320;i++){
+      const shade = Math.min(1, 0.65+Math.random()*0.55);
+      const col = base.clone().multiplyScalar(shade);
+      ctx.fillStyle = '#'+col.getHexString();
+      const x=Math.random()*size, y=Math.random()*size, r=2+Math.random()*4.5;
+      ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill();
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  });
+}
+function barkTexture(){
+  return cachedTexture('bark', ()=>{
+    const w=64, h=96;
+    const c = document.createElement('canvas'); c.width=w; c.height=h;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#8a6444'; ctx.fillRect(0,0,w,h);
+    for(let x=0;x<w;x+=5){
+      ctx.strokeStyle = `rgba(0,0,0,${0.08+Math.random()*0.14})`;
+      ctx.beginPath(); ctx.moveTo(x,0);
+      let cx = x;
+      for(let y=0;y<h;y+=8){ cx += Math.random()*3-1.5; ctx.lineTo(cx,y); }
+      ctx.stroke();
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2,1);
+    return tex;
+  });
+}
 function makeTree(){
   const g = new THREE.Group();
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.5,2.4,6), new THREE.MeshStandardMaterial({color:0x8a5a3a,flatShading:true}));
-  trunk.position.y = 1.2; trunk.castShadow=true;
-  const leafColors = [0x4fa652,0x5cb85c,0x3f9a4a];
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.55,1.8,8), new THREE.MeshStandardMaterial({map:barkTexture(), color:0xffffff, roughness:0.85}));
+  trunk.position.y = 0.9; trunk.castShadow=true;
+  const leafColors = [0x6fd66f,0x8fe085,0x5fcf7a,0x7fe0a0];
   const col = leafColors[Math.floor(Math.random()*leafColors.length)];
-  for(let i=0;i<3;i++){
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(1.6-0.28*i, 2.0, 7), new THREE.MeshStandardMaterial({color:col, flatShading:true}));
-    cone.position.y = 2.6 + i*1.35;
-    cone.castShadow = true;
-    g.add(cone);
-  }
+  const leafMat = new THREE.MeshStandardMaterial({map:leafTexture(col), color:0xffffff, roughness:0.7});
+  // one big chunky rounded "lollipop" canopy plus a couple of smaller
+  // puffs for a soft toy-tree silhouette instead of layered cones
+  const main = new THREE.Mesh(new THREE.SphereGeometry(1.7,12,10), leafMat);
+  main.position.y = 3.1; main.castShadow = true;
+  g.add(main);
+  [[-1.1,2.6,0.5],[1.0,2.4,-0.6],[0.2,3.9,0.9]].forEach(([px,py,pz])=>{
+    const puff = new THREE.Mesh(new THREE.SphereGeometry(1.0+Math.random()*0.3,10,8), leafMat);
+    puff.position.set(px,py,pz);
+    puff.castShadow = true;
+    g.add(puff);
+  });
   g.add(trunk);
   return g;
 }
@@ -725,47 +958,120 @@ parkCells.forEach(cell=>{
 scene.add(decorGroup);
 
 /* ============================================================
-   ATMOSPHERIC DUST MOTES (cinematic light haze drifting in the air)
+   BIRDS — slow circling flocks that can collide with the drone
 ============================================================ */
-function moteTexture(){
-  const c = document.createElement('canvas'); c.width=c.height=64;
-  const ctx = c.getContext('2d');
-  const g = ctx.createRadialGradient(32,32,0,32,32,32);
-  g.addColorStop(0,'rgba(255,238,196,0.9)');
-  g.addColorStop(1,'rgba(255,238,196,0)');
-  ctx.fillStyle = g; ctx.fillRect(0,0,64,64);
-  return new THREE.CanvasTexture(c);
+const BIRD_COUNT = 9;
+const birds = [];
+function makeBird(){
+  const bodyColor = [0x3a3a3a,0x8a5a3a,0xe8d9b8,0x4a6a8a,0xffffff][Math.floor(Math.random()*5)];
+  const mat = new THREE.MeshStandardMaterial({color:bodyColor, roughness:0.7});
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.22,8,6), mat);
+  body.scale.set(1,0.8,1.6);
+  g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.13,8,6), mat);
+  head.position.set(0,0.08,0.3);
+  g.add(head);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.04,0.13,6), new THREE.MeshStandardMaterial({color:0xffa62b}));
+  beak.rotation.x = Math.PI/2; beak.position.set(0,0.06,0.44);
+  g.add(beak);
+  const wingMat = new THREE.MeshStandardMaterial({color:bodyColor, roughness:0.7, side:THREE.DoubleSide});
+  const wingGeo = new THREE.PlaneGeometry(0.55,0.24);
+  const wingL = new THREE.Mesh(wingGeo, wingMat);
+  wingL.position.set(-0.24,0.02,0);
+  g.add(wingL);
+  const wingR = new THREE.Mesh(wingGeo, wingMat);
+  wingR.position.set(0.24,0.02,0);
+  g.add(wingR);
+  return {group:g, wingL, wingR};
 }
-const MOTE_COUNT = 160;
-const moteGeo = new THREE.BufferGeometry();
-const motePos = new Float32Array(MOTE_COUNT*3);
-const moteSpeed = [];
-for(let i=0;i<MOTE_COUNT;i++){
-  motePos[i*3]   = (Math.random()-0.5)*140;
-  motePos[i*3+1] = Math.random()*26;
-  motePos[i*3+2] = (Math.random()-0.5)*140;
-  moteSpeed.push(0.25+Math.random()*0.5);
-}
-moteGeo.setAttribute('position', new THREE.BufferAttribute(motePos,3));
-const moteMat = new THREE.PointsMaterial({
-  size:0.55, map:moteTexture(), transparent:true, opacity:0.55,
-  blending:THREE.AdditiveBlending, depthWrite:false, sizeAttenuation:true
-});
-const motes = new THREE.Points(moteGeo, moteMat);
-scene.add(motes);
-function updateMotes(dt){
-  const pos = motes.geometry.attributes.position;
-  for(let i=0;i<MOTE_COUNT;i++){
-    pos.array[i*3+1] += moteSpeed[i]*dt;
-    pos.array[i*3]   += Math.sin(performance.now()/1800 + i)*0.01;
-    if(pos.array[i*3+1] > 27){
-      pos.array[i*3+1] = 0;
-      pos.array[i*3]   = (Math.random()-0.5)*140;
-      pos.array[i*3+2] = (Math.random()-0.5)*140;
+function spawnBirds(){
+  // a couple of solo birds at varied altitude...
+  const SOLO_COUNT = 4;
+  for(let i=0;i<SOLO_COUNT;i++){
+    const b = makeBird();
+    const cx = (Math.random()-0.5)*TOWN_FLAT_RADIUS*1.6;
+    const cz = (Math.random()-0.5)*TOWN_FLAT_RADIUS*1.6;
+    const radius = 14+Math.random()*22;
+    const angle = Math.random()*Math.PI*2;
+    const angularSpeed = (0.14+Math.random()*0.18) * (Math.random()<0.5?1:-1);
+    // some birds fly right at the drone's own altitude on purpose
+    const baseAltitude = i===0 ? DRONE_ALT : DRONE_ALT + (Math.random()-0.5)*11;
+    b.group.position.set(cx+Math.cos(angle)*radius, baseAltitude, cz+Math.sin(angle)*radius);
+    scene.add(b.group);
+    birds.push({...b, cx, cz, radius, angle, angularSpeed, baseAltitude, wobble:Math.random()*10, shakeTimer:0, collideCooldown:0, shakePos:new THREE.Vector3()});
+  }
+  // ...plus a couple of tight flocks that circle together
+  const FLOCK_COUNT = 2, FLOCK_SIZE = 4;
+  for(let f=0; f<FLOCK_COUNT; f++){
+    const cx = (Math.random()-0.5)*TOWN_FLAT_RADIUS*1.6;
+    const cz = (Math.random()-0.5)*TOWN_FLAT_RADIUS*1.6;
+    const radius = 12+Math.random()*16;
+    const angularSpeed = (0.18+Math.random()*0.16) * (Math.random()<0.5?1:-1);
+    const flockAltitude = f===0 ? DRONE_ALT+2 : DRONE_ALT + (Math.random()-0.5)*10;
+    for(let i=0;i<FLOCK_SIZE;i++){
+      const b = makeBird();
+      const angle = (i/FLOCK_SIZE)*Math.PI*2;
+      const baseAltitude = flockAltitude + (Math.random()-0.5)*1.6;
+      b.group.position.set(cx+Math.cos(angle)*radius, baseAltitude, cz+Math.sin(angle)*radius);
+      scene.add(b.group);
+      birds.push({...b, cx, cz, radius: radius + (Math.random()-0.5)*3, angle, angularSpeed, baseAltitude, wobble:Math.random()*10, shakeTimer:0, collideCooldown:0, shakePos:new THREE.Vector3()});
     }
   }
-  pos.needsUpdate = true;
 }
+spawnBirds();
+
+function updateBirds(dt){
+  birds.forEach(b=>{
+    if(b.collideCooldown>0) b.collideCooldown -= dt;
+    if(b.shakeTimer>0){
+      b.shakeTimer -= dt;
+      const s = 0.3;
+      b.group.position.set(
+        b.shakePos.x + (Math.random()-0.5)*s,
+        b.shakePos.y + (Math.random()-0.5)*s,
+        b.shakePos.z + (Math.random()-0.5)*s
+      );
+      if(b.shakeTimer<=0) b.group.position.copy(b.shakePos);
+      return;
+    }
+    b.angle += b.angularSpeed*dt;
+    const targetX = b.cx + Math.cos(b.angle)*b.radius;
+    const targetZ = b.cz + Math.sin(b.angle)*b.radius;
+    const bobY = b.baseAltitude + Math.sin(performance.now()/500 + b.angle)*1.2;
+    const prevX = b.group.position.x, prevZ = b.group.position.z;
+    b.group.position.set(targetX, bobY, targetZ);
+    b.group.rotation.y = Math.atan2(targetX-prevX, targetZ-prevZ);
+    const flap = Math.sin(performance.now()/90 + b.angle*3)*0.9;
+    b.wingL.rotation.z = flap;
+    b.wingR.rotation.z = -flap;
+  });
+}
+
+function checkBirdCollisions(){
+  if(droneShakeTimer>0 || droneCollideCooldown>0) return;
+  for(const b of birds){
+    if(b.shakeTimer>0 || b.collideCooldown>0) continue;
+    const dx = drone.position.x-b.group.position.x;
+    const dy = drone.position.y-b.group.position.y;
+    const dz = drone.position.z-b.group.position.z;
+    if(dx*dx+dy*dy+dz*dz < 2.6*2.6){
+      sfxBirdCollision();
+      b.shakeTimer = 0.5;
+      b.collideCooldown = 2.2; // grace period so they can drift apart before colliding again
+      b.shakePos.copy(b.group.position);
+      droneShakeTimer = 0.5;
+      droneCollideCooldown = 2.2;
+      droneShakePos.copy(drone.position);
+      velocity.set(0,0,0);
+      showMessage('🐦 Bird strike!', 'bad', 1600);
+      break;
+    }
+  }
+}
+
+/* ============================================================
+
 
 /* ============================================================
    SIGN TEXTURE HELPER
@@ -795,70 +1101,65 @@ function makeSignTexture(text, opts={}){
    BUILDING BUILDER (shared by houses & decoys)
 ============================================================ */
 const HOUSE_PALETTES = [
-  {body:0xf6c28b, roof:0xb5533c}, {body:0xf3e39c, roof:0x5a8f5a},
-  {body:0xbfe0e6, roof:0x3f6f8f}, {body:0xf0b7c4, roof:0x8f4f6f},
-  {body:0xd8cbe8, roof:0x6a4f8f}, {body:0xc9e4c1, roof:0x4a7a4a},
-  {body:0xf9d59b, roof:0xc76b3d}, {body:0xcfe1f5, roof:0x4d6f9f},
-  {body:0xf7cfcf, roof:0xb54848}, {body:0xe3ddc9, roof:0x8a7355},
-  {body:0xd6e6d1, roof:0x5f8f6f}, {body:0xf5e6c8, roof:0x9f6f4a},
-  {body:0xcfe8ea, roof:0x3f8f8f}
+  {body:0xffc1e0, roof:0xff6fa5}, {body:0xfff3a0, roof:0x5cc76b},
+  {body:0xb8e8ff, roof:0x4fa3e0}, {body:0xffd7b0, roof:0xff8a5c},
+  {body:0xd8c8ff, roof:0x9a6fe0}, {body:0xc3f2c9, roof:0x4fbf6b},
+  {body:0xffe08a, roof:0xff9d3d}, {body:0xbfe9ff, roof:0x3fa0d8},
+  {body:0xffc3c3, roof:0xff5c5c}, {body:0xf0e6c8, roof:0xd9a94f},
+  {body:0xcdf0d8, roof:0x5cbf87}, {body:0xffe6c8, roof:0xe08a4f},
+  {body:0xc8f0ee, roof:0x3fb8b0}
 ];
 
-function brickWallTexture(baseHex){
-  return cachedTexture('brick_'+baseHex, ()=>{
+// Soft painted-panel wall texture — smooth toy-like bands instead of a
+// gritty brick pattern, much better suited to a cute Tamagotchi look.
+function toyWallTexture(baseHex){
+  return cachedTexture('wall_'+baseHex, ()=>{
     const size = 256;
     const c = document.createElement('canvas'); c.width=c.height=size;
     const ctx = c.getContext('2d');
     const base = new THREE.Color(baseHex);
-    ctx.fillStyle = '#847a68'; ctx.fillRect(0,0,size,size); // mortar
-    const brickW=36, brickH=15, gap=3;
-    let row=0;
-    for(let y=-brickH; y<size+brickH; y+=brickH+gap){
-      const offset = (row%2===0) ? 0 : -(brickW/2);
-      for(let x=offset; x<size+brickW; x+=brickW+gap){
-        const shade = Math.min(1, 0.72+Math.random()*0.42);
-        const col = base.clone().multiplyScalar(shade);
-        ctx.fillStyle = '#'+col.getHexString();
-        ctx.fillRect(x, y, brickW, brickH);
-      }
-      row++;
+    ctx.fillStyle = '#'+base.getHexString();
+    ctx.fillRect(0,0,size,size);
+    const panelW = 42;
+    for(let x=0; x<size; x+=panelW){
+      const shade = 0.94 + (Math.floor(x/panelW)%2===0 ? 0.05 : -0.03);
+      const col = base.clone().multiplyScalar(Math.min(1,shade));
+      ctx.fillStyle = '#'+col.getHexString();
+      ctx.fillRect(x,0,panelW-3,size);
     }
+    // gentle horizontal highlight near the top for a glossy toy sheen
+    const g = ctx.createLinearGradient(0,0,0,size*0.4);
+    g.addColorStop(0,'rgba(255,255,255,0.22)');
+    g.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(0,0,size,size*0.4);
     const tex = new THREE.CanvasTexture(c);
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(1.6,1.1);
+    tex.repeat.set(1.2,1);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
   });
 }
 
-function roofShingleTexture(baseHex){
-  return cachedTexture('roof_'+baseHex, ()=>{
+function toyRoofTexture(baseHex){
+  return cachedTexture('toyroof_'+baseHex, ()=>{
     const size = 256;
     const c = document.createElement('canvas'); c.width=c.height=size;
     const ctx = c.getContext('2d');
     const base = new THREE.Color(baseHex);
-    ctx.fillStyle = '#'+base.clone().multiplyScalar(0.6).getHexString();
+    ctx.fillStyle = '#'+base.getHexString();
     ctx.fillRect(0,0,size,size);
-    const rowH = 20, tileW = 20;
+    const rowH = 34;
     let row=0;
     for(let y=0;y<size;y+=rowH){
-      const offset = (row%2===0) ? 0 : tileW/2;
-      for(let x=-tileW; x<size+tileW; x+=tileW){
-        const shade = Math.min(1, 0.75+Math.random()*0.4);
-        const col = base.clone().multiplyScalar(shade);
-        ctx.fillStyle = '#'+col.getHexString();
-        ctx.beginPath();
-        ctx.moveTo(x+offset, y);
-        ctx.lineTo(x+offset+tileW-2, y);
-        ctx.lineTo(x+offset+(tileW-2)/2, y+rowH-3);
-        ctx.closePath();
-        ctx.fill();
-      }
+      const shade = row%2===0 ? 1.06 : 0.92;
+      const col = base.clone().multiplyScalar(Math.min(1,shade));
+      ctx.fillStyle = '#'+col.getHexString();
+      ctx.fillRect(0,y,size,rowH-4);
       row++;
     }
     const tex = new THREE.CanvasTexture(c);
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(2.2,2.2);
+    tex.repeat.set(1.4,1.4);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
   });
@@ -869,25 +1170,44 @@ function doorWoodTexture(){
     const w=128, h=200;
     const c = document.createElement('canvas'); c.width=w; c.height=h;
     const ctx = c.getContext('2d');
-    ctx.fillStyle = '#6b4327'; ctx.fillRect(0,0,w,h);
+    ctx.fillStyle = '#a8703f'; ctx.fillRect(0,0,w,h);
     for(let x=0;x<w;x+=7){
-      ctx.fillStyle = `rgba(0,0,0,${0.08+Math.random()*0.12})`;
+      ctx.fillStyle = `rgba(0,0,0,${0.05+Math.random()*0.08})`;
       ctx.fillRect(x,0,3,h);
     }
-    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
-    for(let i=0;i<26;i++){
-      const y = Math.random()*h;
-      ctx.beginPath(); ctx.moveTo(0,y);
-      ctx.bezierCurveTo(w*0.3,y+Math.random()*6-3,w*0.7,y+Math.random()*6-3,w,y);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 3;
     ctx.strokeRect(w*0.16, h*0.08, w*0.68, h*0.35);
     ctx.strokeRect(w*0.16, h*0.55, w*0.68, h*0.37);
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
   });
+}
+
+// Soft blob "contact shadow" dropped under every building/vehicle/character
+// so they visibly connect to the ground instead of looking like they're
+// floating above it, regardless of how the real-time shadow map resolves.
+function blobShadowTexture(){
+  return cachedTexture('blobShadow', ()=>{
+    const c = document.createElement('canvas'); c.width=c.height=64;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(32,32,0,32,32,32);
+    g.addColorStop(0,'rgba(20,20,25,0.5)');
+    g.addColorStop(0.7,'rgba(20,20,25,0.22)');
+    g.addColorStop(1,'rgba(20,20,25,0)');
+    ctx.fillStyle = g; ctx.fillRect(0,0,64,64);
+    return new THREE.CanvasTexture(c);
+  });
+}
+function addContactShadow(parent, rx, rz, y=0.04){
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(rx*2, rz*2),
+    new THREE.MeshBasicMaterial({map:blobShadowTexture(), transparent:true, depthWrite:false})
+  );
+  mesh.rotation.x = -Math.PI/2;
+  mesh.position.y = y;
+  parent.add(mesh);
+  return mesh;
 }
 
 function cardinalFacing(x, z){
@@ -900,28 +1220,31 @@ function cardinalFacing(x, z){
   return dz >= 0 ? 0 : Math.PI;
 }
 
-function buildStructure(x, z, palIdx, facesCenter){
+function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
   const pal = HOUSE_PALETTES[palIdx % HOUSE_PALETTES.length];
   const g = new THREE.Group();
   g.position.set(x,0,z);
-  if(facesCenter) g.rotation.y = cardinalFacing(x,z);
+  // grid-aligned facing — snapped to the nearest cardinal direction so
+  // every building lines up square with the street grid
+  g.rotation.y = facesCenter ? cardinalFacing(x,z) : 0;
 
-  const style = palIdx % 3; // 0 = pyramid roof, 1 = gable roof, 2 = flat modern roof
-  const bw = 7+Math.random()*1.4, bh=4.2+Math.random()*1.4, bd=6.4;
-  const roofMat = new THREE.MeshStandardMaterial({map:roofShingleTexture(pal.roof), color:0xffffff, flatShading:true, roughness:0.85});
-  const body = new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd), new THREE.MeshStandardMaterial({map:brickWallTexture(pal.body), color:0xffffff, roughness:0.9}));
+  const style = palIdx % 4; // 0 = pyramid, 1 = gable, 2 = flat, 3 = rounded dome
+  const bw = 7.4+Math.random()*1.4, bh=(4.0+Math.random()*1.2)*heightMult, bd=6.6;
+  const roofMat = new THREE.MeshStandardMaterial({map:toyRoofTexture(pal.roof), color:0xffffff, roughness:0.55});
+  const wallMat = new THREE.MeshStandardMaterial({map:toyWallTexture(pal.body), color:0xffffff, roughness:0.75});
+  const body = new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd), wallMat);
   body.position.y = bh/2; body.castShadow=true; body.receiveShadow=true;
   g.add(body);
 
   if(style===0){
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(bw*0.8,3.2,4), roofMat);
-    roof.position.y = bh + 1.6; roof.rotation.y = Math.PI/4; roof.castShadow=true;
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(bw*0.82,3.0,4), roofMat);
+    roof.position.y = bh + 1.5; roof.rotation.y = Math.PI/4; roof.castShadow=true;
     g.add(roof);
   } else if(style===1){
-    const roofRise = 2.4, halfW = bw/2 + 0.5;
+    const roofRise = 2.3, halfW = bw/2 + 0.5;
     const slope = Math.atan2(roofRise, halfW);
     const panelLen = Math.sqrt(halfW*halfW + roofRise*roofRise);
-    const panelGeo = new THREE.BoxGeometry(panelLen, 0.22, bd+1.0);
+    const panelGeo = new THREE.BoxGeometry(panelLen, 0.24, bd+1.0);
     const panelL = new THREE.Mesh(panelGeo, roofMat);
     panelL.position.set(-halfW/2, bh+roofRise/2, 0); panelL.rotation.z = slope; panelL.castShadow=true;
     const panelR = new THREE.Mesh(panelGeo, roofMat);
@@ -930,7 +1253,7 @@ function buildStructure(x, z, palIdx, facesCenter){
 
     // triangular gable-end infill — without this there's an open gap
     // between the flat wall top and the sloped roof at the front/back
-    const gableMat = new THREE.MeshStandardMaterial({map:brickWallTexture(pal.body), color:0xffffff, roughness:0.9, side:THREE.DoubleSide});
+    const gableMat = new THREE.MeshStandardMaterial({map:toyWallTexture(pal.body), color:0xffffff, roughness:0.75, side:THREE.DoubleSide});
     const gableShape = new THREE.Shape();
     gableShape.moveTo(-bw/2, 0);
     gableShape.lineTo(bw/2, 0);
@@ -946,27 +1269,54 @@ function buildStructure(x, z, palIdx, facesCenter){
     gableBack.rotation.y = Math.PI;
     gableBack.castShadow = true;
     g.add(gableBack);
-  } else {
+  } else if(style===2){
     const cap = new THREE.Mesh(new THREE.BoxGeometry(bw+0.5,0.4,bd+0.5), roofMat);
     cap.position.y = bh+0.2; cap.castShadow = true;
     g.add(cap);
-    const trim = new THREE.Mesh(new THREE.BoxGeometry(bw+0.5,0.7,0.18), new THREE.MeshStandardMaterial({color:pal.roof, flatShading:true}));
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(bw+0.5,0.7,0.18), new THREE.MeshStandardMaterial({color:pal.roof}));
     [1,-1].forEach(sz=>{
       const t = trim.clone();
       t.position.set(0, bh+0.75, sz*(bd/2+0.25));
       g.add(t);
     });
+  } else {
+    // rounded dome roof — the signature cute toy-world silhouette
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(bw*0.5, 16, 10, 0, Math.PI*2, 0, Math.PI/1.9), new THREE.MeshStandardMaterial({color:pal.roof, roughness:0.35, metalness:0.05}));
+    dome.position.y = bh; dome.castShadow = true;
+    g.add(dome);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.28,10,10), new THREE.MeshStandardMaterial({color:pal.roof, roughness:0.3}));
+    knob.position.y = bh + bw*0.34;
+    g.add(knob);
   }
 
   const door = new THREE.Mesh(new THREE.PlaneGeometry(1.3,2.2), new THREE.MeshStandardMaterial({map:doorWoodTexture(), color:0xffffff}));
   door.position.set(0, 1.1, bd/2+0.02);
   g.add(door);
 
+  // round porthole-style windows for extra toy charm
   for(const dx of [-1,1]){
-    const win = new THREE.Mesh(new THREE.PlaneGeometry(1.1,1.1), new THREE.MeshStandardMaterial({color:0xfff6c9, emissive:0xffe9a0, emissiveIntensity:0.3}));
+    const win = new THREE.Mesh(new THREE.CircleGeometry(0.62,20), new THREE.MeshStandardMaterial({color:0xfff6c9, emissive:0xffe9a0, emissiveIntensity:0.35}));
     win.position.set(dx*bw*0.28, 2.6, bd/2+0.02);
     g.add(win);
+    const frame = new THREE.Mesh(new THREE.RingGeometry(0.62,0.78,20), new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.6}));
+    frame.position.set(dx*bw*0.28, 2.6, bd/2+0.015);
+    g.add(frame);
   }
+
+  // taller decoy buildings get extra stacked window rows so they read as
+  // multi-storey skyscrapers rather than just a stretched house
+  if(heightMult>1.3){
+    const extraRows = Math.floor((heightMult-1)*2.6);
+    for(let r=1;r<=extraRows;r++){
+      for(const dx of [-1,1]){
+        const win = new THREE.Mesh(new THREE.CircleGeometry(0.5,16), new THREE.MeshStandardMaterial({color:0xfff6c9, emissive:0xffe9a0, emissiveIntensity:0.3}));
+        win.position.set(dx*bw*0.28, 2.6 + r*2.5, bd/2+0.02);
+        g.add(win);
+      }
+    }
+  }
+
+  addContactShadow(g, bw*0.72, bd*0.66);
 
   scene.add(g);
   return { group:g, bodyWidth:bw, roofY:bh, worldPos:new THREE.Vector3(x,0,z) };
@@ -1023,7 +1373,8 @@ function setHouseNumber(house, num, isCorrect){
 ============================================================ */
 const decoys = [];
 decoyCells.forEach((cell, i)=>{
-  const struct = buildStructure(cell.x, cell.z, HOUSE_COUNT+i, true);
+  const heightMult = (i%3===0) ? 1.1+Math.random()*0.35 : 1;
+  const struct = buildStructure(cell.x, cell.z, HOUSE_COUNT+i, true, heightMult);
 
   const pkgSign = new THREE.Sprite(new THREE.SpriteMaterial({map: makeSignTexture('📦', {bg:'#fff6e2', border:'#f2994a', font:'128px Arial'}), transparent:true, opacity:0}));
   pkgSign.position.set(0, struct.roofY+8.5, 0);
@@ -1166,6 +1517,9 @@ function updateHangingPackage(dt){
     // tilt opposite the lag so it visibly swings like a pendulum under inertia
     packageMesh.rotation.z = THREE.MathUtils.clamp((_hangA.x-packageMesh.position.x)*-0.16, -0.4, 0.4);
     packageMesh.rotation.x = THREE.MathUtils.clamp((_hangA.z-packageMesh.position.z)*0.16, -0.4, 0.4);
+    // turn together with the drone (with a touch of lag) so the box stays
+    // oriented the same way as the drone instead of holding its old heading
+    packageMesh.rotation.y = THREE.MathUtils.lerp(packageMesh.rotation.y, drone.rotation.y, 1-Math.pow(0.0008,dt));
   }
   updateCables(hanging);
 }
@@ -1277,12 +1631,21 @@ function applyDroneTier(tier){
     });
   }
   if(tier>=3){
-    // two mini escort drones flying in formation behind the main drone
+    // two mini escort drones flying in loose formation behind the main
+    // drone — they follow with a spring/lag rather than being rigidly
+    // attached, so they trail and drift a bit independently
     droneUpgradeExtras.minis = [];
     [-2.0, 2.0].forEach(sideX=>{
       const mini = makeMiniDrone();
-      mini.group.position.set(sideX, -0.3, -4.4);
-      drone.add(mini.group);
+      const anchor = new THREE.Object3D();
+      anchor.position.set(sideX, -0.3, -4.4);
+      drone.add(anchor);
+      const anchorWorld = new THREE.Vector3();
+      anchor.getWorldPosition(anchorWorld);
+      mini.group.position.copy(anchorWorld);
+      mini.anchor = anchor;
+      mini.velocity = new THREE.Vector3();
+      scene.add(mini.group);
       droneUpgradeExtras.minis.push(mini);
     });
   }
@@ -1330,7 +1693,8 @@ function resetDroneTier(){
   }
   if(droneUpgradeExtras.minis){
     droneUpgradeExtras.minis.forEach(mini=>{
-      drone.remove(mini.group);
+      scene.remove(mini.group);
+      if(mini.anchor) drone.remove(mini.anchor);
       mini.group.traverse(obj=>{
         if(obj.geometry) obj.geometry.dispose();
         if(obj.material && obj.material !== droneBodyMat && obj.material !== droneAccentMat){
@@ -1401,7 +1765,7 @@ function updateUpgradeFX(dt){
     }
   }
 }
-const TRAIL_COUNT = 30;
+const TRAIL_COUNT = 46;
 const trailTexture = (function(){
   const c = document.createElement('canvas'); c.width=c.height=32;
   const ctx = c.getContext('2d');
@@ -1413,7 +1777,7 @@ const trailTexture = (function(){
 })();
 const trailPool = [];
 for(let i=0;i<TRAIL_COUNT;i++){
-  const spr = new THREE.Sprite(new THREE.SpriteMaterial({map:trailTexture, transparent:true, opacity:0, depthWrite:false, color:0x8fd0ff}));
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({map:trailTexture, transparent:true, opacity:0, depthWrite:false, color:0xffffff}));
   spr.scale.set(0.01,0.01,1);
   spr.visible = false;
   scene.add(spr);
@@ -1433,28 +1797,35 @@ function updateDroneTrail(dt){
   if(droneUpgradeExtras.minis){
     droneUpgradeExtras.minis.forEach(mini=>{
       mini.arms.forEach(p=> p.rotation.y += dt*50);
+      // spring-follow the anchor point instead of rigid attachment, so
+      // the escorts visibly trail/drift rather than moving in lockstep
+      const anchorWorld = new THREE.Vector3();
+      mini.anchor.getWorldPosition(anchorWorld);
+      const k = 14, damping = 6;
+      const dx = anchorWorld.x-mini.group.position.x;
+      const dy = anchorWorld.y-mini.group.position.y;
+      const dz = anchorWorld.z-mini.group.position.z;
+      mini.velocity.x += (dx*k - mini.velocity.x*damping)*dt;
+      mini.velocity.y += (dy*k - mini.velocity.y*damping)*dt;
+      mini.velocity.z += (dz*k - mini.velocity.z*damping)*dt;
+      mini.group.position.x += mini.velocity.x*dt;
+      mini.group.position.y += mini.velocity.y*dt;
+      mini.group.position.z += mini.velocity.z*dt;
+      mini.group.rotation.y = THREE.MathUtils.lerp(mini.group.rotation.y, drone.rotation.y, 1-Math.pow(0.002,dt));
+      mini.group.rotation.z = THREE.MathUtils.lerp(mini.group.rotation.z, THREE.MathUtils.clamp(-dx*0.05,-0.4,0.4), 1-Math.pow(0.002,dt));
     });
   }
   trailSpawnTimer -= dt;
   if(trailSpawnTimer<=0 && currentSpeedFrac>0.1){
     trailSpawnTimer = 0.035;
-    const slot = trailPool[trailIndex]; trailIndex = (trailIndex+1)%TRAIL_COUNT;
-    _trailTail.set(0,-0.1,-1.3);
-    drone.localToWorld(_trailTail);
-    slot.spr.position.copy(_trailTail);
-    slot.age = 0;
-    slot.spr.visible = true;
-    slot.spr.material.opacity = 0.85;
-    slot.spr.scale.set(0.9,0.9,1);
-    // lock in this particle's color at spawn time — previously every
-    // visible particle was re-colored to the *same* hue every frame,
-    // which made the whole pool flicker in sync and could read as
-    // several overlapping trails instead of one smooth rainbow streak
     if(droneTier>=2){
+      // rainbow tier: twin exhaust trails, one from each side
       const hueNow = (performance.now()/12)%360;
-      slot.spr.material.color.setHSL(hueNow/360, 0.95, 0.42);
+      spawnTrailParticle(-0.4, c=> c.setHSL(hueNow/360, 0.95, 0.42));
+      spawnTrailParticle(0.4, c=> c.setHSL(((hueNow+180)%360)/360, 0.95, 0.42));
     } else {
-      slot.spr.material.color.set(0x4fa9ff);
+      // plain white smoke before the rainbow upgrade
+      spawnTrailParticle(0, c=> c.set(0xffffff));
     }
   }
   trailPool.forEach(slot=>{
@@ -1466,6 +1837,20 @@ function updateDroneTrail(dt){
     const s = 0.9 + t*1.1;
     slot.spr.scale.set(s,s,1);
   });
+}
+function spawnTrailParticle(sideOffset, colorSetter){
+  const slot = trailPool[trailIndex]; trailIndex = (trailIndex+1)%TRAIL_COUNT;
+  _trailTail.set(sideOffset,-0.1,-1.3);
+  drone.localToWorld(_trailTail);
+  slot.spr.position.copy(_trailTail);
+  slot.age = 0;
+  slot.spr.visible = true;
+  slot.spr.material.opacity = 0.85;
+  slot.spr.scale.set(0.9,0.9,1);
+  // lock in this particle's color at spawn time — previously every
+  // visible particle was re-colored to the *same* hue every frame,
+  // which made the whole pool flicker in sync
+  colorSetter(slot.spr.material.color);
 }
 
 /* ============================================================
@@ -1641,6 +2026,29 @@ function updateEngineAudio(speedFrac){
   windFilter.frequency.setTargetAtTime(1300 + speedFrac*1800, t, 0.2);
 }
 
+// Every oscillator/source scheduled on the 'music' channel gets tracked
+// here so a style switch can immediately silence whatever's still queued
+// up (attack ramps, sustained pads, the tail of a long classical phrase)
+// instead of waiting for it to finish naturally.
+let activeMusicNodes = [];
+function trackMusicNode(node, gainNode, stopAt){
+  activeMusicNodes.push({node, gainNode, stopAt});
+  if(activeMusicNodes.length>400) activeMusicNodes.splice(0, activeMusicNodes.length-400);
+}
+function stopAllMusicNodes(){
+  const now = actx ? actx.currentTime : 0;
+  activeMusicNodes.forEach(({node, gainNode})=>{
+    try{
+      if(gainNode){
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(0.0001, now);
+      }
+      node.stop(now);
+    }catch(e){ /* already stopped/ended — fine */ }
+  });
+  activeMusicNodes = [];
+}
+
 function beep(freq, dur, type='sine', gain=0.18, delay=0, channel='sfx'){
   if(audioMuted) return;
   if(channel==='music' && !musicEnabled) return;
@@ -1656,6 +2064,7 @@ function beep(freq, dur, type='sine', gain=0.18, delay=0, channel='sfx'){
     g.gain.linearRampToValueAtTime(gain, t0+0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
     osc.start(t0); osc.stop(t0+dur+0.02);
+    if(channel==='music') trackMusicNode(osc, g);
   }catch(e){}
 }
 // Like beep(), but holds at full volume (attack -> flat sustain -> short
@@ -1681,6 +2090,7 @@ function beepSustain(freq, dur, type='sine', gain=0.12, delay=0, channel='music'
     g.gain.setValueAtTime(gain, sustainEnd);
     g.gain.linearRampToValueAtTime(0.0001, t0+dur);
     osc.start(t0); osc.stop(t0+dur+0.02);
+    if(channel==='music') trackMusicNode(osc, g);
   }catch(e){}
 }
 function noiseBurst(dur=0.12, gain=0.22, freq=1200, delay=0, filterType='lowpass', q=1, channel='sfx'){
@@ -1702,6 +2112,7 @@ function noiseBurst(dur=0.12, gain=0.22, freq=1200, delay=0, filterType='lowpass
     g.gain.value = gain;
     src.connect(filt); filt.connect(g); g.connect(masterGain);
     src.start(t0);
+    if(channel==='music') trackMusicNode(src, g);
   }catch(e){}
 }
 function sfxClap(){
@@ -1732,6 +2143,13 @@ function sfxWinch(durationSec, windingIn){
     beep(freq, 0.06, 'square', 0.045, t);
     noiseBurst(0.025, 0.035, 3400, t, 'highpass', 2);
   }
+}
+function sfxBirdCollision(){
+  beep(200,0.13,'square',0.17,0);
+  beep(130,0.16,'square',0.15,0.06);
+  beep(950,0.05,'sine',0.13,0.02);
+  beep(720,0.06,'sine',0.11,0.09);
+  noiseBurst(0.16,0.13,1800,0,'bandpass',1.4);
 }
 function sfxClick(){ beep(500,0.05,'square',0.1,0); }
 function sfxLevelUp(){
@@ -1774,6 +2192,7 @@ const MUSIC_STYLES = {
 let musicStyleKey = 'cyberpunk';
 let musicBarCount = 0;
 let musicStarted = false;
+let musicTimeoutId = null;
 
 /* ---------- Classical: a mellow rendition of Beethoven's "Ode to Joy"
    (Symphony No. 9, public domain) — melody with a soft sustained pad,
@@ -1813,14 +2232,14 @@ function scheduleClassicalPhrase(){
     const root = CLASSICAL_CHORD_ROOTS[i % CLASSICAL_CHORD_ROOTS.length];
     beepSustain(root, 4*beatSec*1.05, 'sine', 0.032, i*4*beatSec, 'music');
   }
-  setTimeout(scheduleMusicBar, totalBeats*beatSec*1000);
+  musicTimeoutId = setTimeout(scheduleMusicBar, totalBeats*beatSec*1000);
 }
 
 function scheduleMusicBar(){
   if(!musicStarted) return;
   if(musicStyleKey === 'classical'){ scheduleClassicalPhrase(); return; }
   const style = MUSIC_STYLES[musicStyleKey];
-  if(!style){ setTimeout(scheduleMusicBar, 600); return; }
+  if(!style){ musicTimeoutId = setTimeout(scheduleMusicBar, 600); return; }
   const barStep = 60/style.bpm/4;
   const barDur = barStep*16;
 
@@ -1848,7 +2267,7 @@ function scheduleMusicBar(){
   }
 
   musicBarCount++;
-  setTimeout(scheduleMusicBar, barDur*1000);
+  musicTimeoutId = setTimeout(scheduleMusicBar, barDur*1000);
 }
 function startMusic(){
   if(musicStarted) return;
@@ -1857,8 +2276,20 @@ function startMusic(){
   scheduleMusicBar();
 }
 function setMusicStyle(key){
+  if(key === musicStyleKey) return;
   musicStyleKey = key;
-  startMusic();
+  // cancel whatever's still queued from the old style (including a
+  // long-running classical phrase) so the new one starts right away
+  // instead of waiting for the old bar/phrase to finish naturally
+  if(musicTimeoutId){ clearTimeout(musicTimeoutId); musicTimeoutId = null; }
+  stopAllMusicNodes();
+  musicBarCount = 0;
+  if(musicStarted){
+    ensureAudio();
+    scheduleMusicBar();
+  } else {
+    startMusic();
+  }
 }
 
 const muteBtn = document.getElementById('muteBtn');
@@ -1939,12 +2370,31 @@ function startNewRound(){
 // The actual multiplication problem isn't decided until the package is
 // actually picked up — this lets the player change the number settings
 // any time right up until pickup, not just between rounds.
-function finalizeProblem(){
+const OPERATION_SYMBOLS = {mul:'\u00D7', add:'+', sub:'\u2212', div:'\u00F7'};
+function generateOperationProblem(op){
   const tables = Array.from(selectedTables);
-  const a = pick(tables.length? tables : [2,3,4,5,6,7,8,9]);
+  const n = pick(tables.length? tables : [2,3,4,5,6,7,8,9]);
   const b = randInt(2,9);
-  const correct = a*b;
-  state.problem = {a,b,correct};
+  if(op==='add'){
+    return { a:n, b, correct:n+b, opSym:OPERATION_SYMBOLS.add };
+  }
+  if(op==='sub'){
+    const hi = Math.max(n,b), lo = Math.min(n,b);
+    return { a:hi, b:lo, correct:hi-lo, opSym:OPERATION_SYMBOLS.sub };
+  }
+  if(op==='div'){
+    // built as the inverse of a multiplication so it always divides evenly
+    const dividend = n*b;
+    return { a:dividend, b:n, correct:b, opSym:OPERATION_SYMBOLS.div };
+  }
+  // multiplication (default)
+  return { a:n, b, correct:n*b, opSym:OPERATION_SYMBOLS.mul };
+}
+
+function finalizeProblem(){
+  const op = mathOperation==='all' ? pick(['mul','add','sub','div']) : mathOperation;
+  const {a, b, correct, opSym} = generateOperationProblem(op);
+  state.problem = {a,b,correct,opSym};
 
   const used = new Set([correct]);
   const distractors = [];
@@ -1970,7 +2420,7 @@ function finalizeProblem(){
   houses.forEach((h,i)=> setHouseNumber(h, values[i], i===correctIdx));
   state.correctHouseIdx = correctIdx;
 
-  document.getElementById('problemText').textContent = `${a} \u00D7 ${b} = ?`;
+  document.getElementById('problemText').textContent = `${a} ${opSym} ${b} = ?`;
 }
 
 function showMessage(text, cls, holdMs=2200){
@@ -2154,7 +2604,7 @@ function resolveDelivery(idx, correct){
     updateStreakBadge();
     const tierIdx = DRONE_TIER_STREAKS.indexOf(state.streak);
     if(tierIdx>=0) applyDroneTier(tierIdx+1);
-    showMessage(`✅ ${state.problem.a} \u00D7 ${state.problem.b} = ${state.problem.correct}! Delivered!`, 'good', 2600);
+    showMessage(`✅ ${state.problem.a} ${state.problem.opSym} ${state.problem.b} = ${state.problem.correct}! Delivered!`, 'good', 2600);
     burstConfetti(new THREE.Vector3(house.worldPos.x, house.roofY, house.worldPos.z));
     state.carrying = false;
     state.delivering = false;
@@ -2231,6 +2681,27 @@ function updateActionUI(){
   actionBtn.classList.toggle('ready', ready && !state.delivering);
 }
 
+const pickupArrowEl = document.getElementById('pickupArrow');
+const pickupArrowIconEl = document.getElementById('pickupArrowIcon');
+function updatePickupArrow(){
+  if(!(state.atDepotReady && !state.carrying) || state.delivering){
+    pickupArrowEl.classList.remove('show');
+    return;
+  }
+  const depot = decoys[state.depotIdx];
+  const dx = depot.worldPos.x - drone.position.x;
+  const dz = depot.worldPos.z - drone.position.z;
+  const dist = Math.hypot(dx,dz);
+  const targetAngle = Math.atan2(dx,dz);
+  // bearing relative to the drone's current heading, so "up" always
+  // means "keep going straight" no matter which camera view is active
+  let relBearing = targetAngle - drone.rotation.y;
+  relBearing = Math.atan2(Math.sin(relBearing), Math.cos(relBearing));
+  pickupArrowIconEl.style.transform = `rotate(${-relBearing}rad)`;
+  document.getElementById('pickupArrowLabel').textContent = dist < ACT_RANGE ? '📦 Pick up here!' : '📦 Fly to the package';
+  pickupArrowEl.classList.add('show');
+}
+
 function checkAutoActions(){
   if(!state.running || state.delivering) return;
   // pickup happens automatically when close enough; delivery still needs
@@ -2246,24 +2717,18 @@ function checkAutoActions(){
    SETTINGS UI
 ============================================================ */
 const tableGrid = document.getElementById('tableGrid');
+const allBtnEl = document.getElementById('allBtn');
 for(let n=2;n<=9;n++){
   const btn = document.createElement('button');
-  btn.className = 'tbtn active';
-  btn.textContent = '×'+n;
+  btn.className = 'tbtn';
+  btn.textContent = String(n);
   btn.dataset.n = n;
   btn.addEventListener('click', ()=>{
     sfxClick();
-    const allSelected = selectedTables.size === 8;
-    if(allSelected){
-      // everything was selected — treat the first tap as "practice just this one"
-      // instead of deselecting it and leaving the other seven active
-      selectedTables = new Set([n]);
-      [...tableGrid.children].forEach(b=> b.classList.toggle('active', Number(b.dataset.n)===n));
-    } else if(selectedTables.has(n)){
-      if(selectedTables.size>1){ selectedTables.delete(n); btn.classList.remove('active'); }
-    } else {
-      selectedTables.add(n); btn.classList.add('active');
-    }
+    // radio-style: picking a number selects only that one
+    selectedTables = new Set([n]);
+    [...tableGrid.children].forEach(b=> b.classList.toggle('active', Number(b.dataset.n)===n));
+    allBtnEl.classList.remove('active');
     saveSettings();
   });
   tableGrid.appendChild(btn);
@@ -2271,12 +2736,22 @@ for(let n=2;n<=9;n++){
 document.getElementById('allBtn').addEventListener('click', ()=>{
   sfxClick();
   selectedTables = new Set([2,3,4,5,6,7,8,9]);
-  [...tableGrid.children].forEach(b=>b.classList.add('active'));
+  [...tableGrid.children].forEach(b=>b.classList.remove('active'));
+  allBtnEl.classList.add('active');
   saveSettings();
 });
 document.getElementById('gearBtn').addEventListener('click', ()=>{
   sfxClick();
   document.getElementById('settingsPanel').classList.toggle('open');
+});
+
+document.querySelectorAll('.op-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    sfxClick();
+    mathOperation = btn.dataset.op;
+    document.querySelectorAll('.op-btn').forEach(b=> b.classList.toggle('active', b===btn));
+    saveSettings();
+  });
 });
 
 document.querySelectorAll('.music-btn').forEach(btn=>{
@@ -2459,7 +2934,28 @@ const clock = new THREE.Clock();
 
 let throttleTime = 0;
 let wasMovingFast = false;
+let droneShakeTimer = 0;
+let droneCollideCooldown = 0;
+const droneShakePos = new THREE.Vector3();
 function updateDrone(dt){
+  if(droneCollideCooldown>0) droneCollideCooldown -= dt;
+  if(droneShakeTimer > 0){
+    droneShakeTimer -= dt;
+    const s = 0.3;
+    drone.position.set(
+      droneShakePos.x + (Math.random()-0.5)*s,
+      droneShakePos.y + (Math.random()-0.5)*s,
+      droneShakePos.z + (Math.random()-0.5)*s
+    );
+    drone.rotation.z = (Math.random()-0.5)*0.3;
+    currentSpeedFrac = 0;
+    if(droneShakeTimer<=0){
+      drone.position.copy(droneShakePos);
+      drone.rotation.z = 0;
+    }
+    return;
+  }
+
   const turnSpeed = 3.0;
   const thrustMax = 74;
 
@@ -2548,10 +3044,7 @@ function updateCamera(dt){
 }
 
 function updateClouds(dt){
-  cloudGroup.children.forEach(c=>{
-    c.position.x += c.userData.speed*dt;
-    if(c.position.x>300) c.position.x = -300;
-  });
+  // clouds removed
 }
 
 function animate(){
@@ -2564,13 +3057,16 @@ function animate(){
     updateClouds(dt);
     updateConfetti(dt);
     updateCars(dt);
-    updateMotes(dt);
+    updateTownsfolk(dt);
+    updateBirds(dt);
+    checkBirdCollisions();
     updateHangingPackage(dt);
     updateDroneTrail(dt);
     updateUpgradeFX(dt);
     checkCallTimeout();
     checkAutoActions();
     updateActionUI();
+    updatePickupArrow();
     updateCallBubble();
     drawMap();
     updateEngineAudio(currentSpeedFrac);
@@ -2591,7 +3087,13 @@ function animate(){
   }
   if(Array.isArray(saved.selectedTables) && saved.selectedTables.length){
     selectedTables = new Set(saved.selectedTables);
-    [...tableGrid.children].forEach(b=> b.classList.toggle('active', selectedTables.has(Number(b.dataset.n))));
+    const isAll = selectedTables.size===8;
+    [...tableGrid.children].forEach(b=> b.classList.toggle('active', !isAll && selectedTables.has(Number(b.dataset.n))));
+    allBtnEl.classList.toggle('active', isAll);
+  }
+  if(saved.mathOperation && ['mul','add','sub','div','all'].includes(saved.mathOperation)){
+    mathOperation = saved.mathOperation;
+    document.querySelectorAll('.op-btn').forEach(b=> b.classList.toggle('active', b.dataset.op===mathOperation));
   }
   if(saved.musicStyleKey){
     musicStyleKey = saved.musicStyleKey;
