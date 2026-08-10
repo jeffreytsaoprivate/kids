@@ -1322,42 +1322,6 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
   door.position.set(0, 1.1, bd/2+0.02);
   g.add(door);
 
-  // porthole-style windows on all 4 sides (front/back/left/right), with
-  // extra stacked rows for taller buildings — following the reference
-  // city's "4-sided facade" approach so buildings look real from every
-  // angle instead of just the front
-  const rows = 1 + (heightMult>1.3 ? Math.floor((heightMult-1)*2.6) : 0);
-  for(let r=0;r<rows;r++){
-    const y = 2.6 + r*2.5;
-    const wr = r===0 ? 0.62 : 0.5;
-    [-1,1].forEach(dx=>{
-      if(Math.random()<0.85){
-        const winF = new THREE.Mesh(new THREE.CircleGeometry(wr,16), new THREE.MeshStandardMaterial({color:0xfff6c9, emissive:0xffe9a0, emissiveIntensity:0.3+Math.random()*0.1}));
-        winF.position.set(dx*bw*0.28, y, bd/2+0.02);
-        g.add(winF);
-        const winB = winF.clone(); winB.material = winF.material.clone();
-        winB.position.z = -bd/2-0.02; winB.rotation.y = Math.PI;
-        g.add(winB);
-        if(r===0){
-          const frame = new THREE.Mesh(new THREE.RingGeometry(wr,wr+0.16,20), new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.6}));
-          frame.position.set(dx*bw*0.28, y, bd/2+0.015);
-          g.add(frame);
-        }
-      }
-    });
-    [-1,1].forEach(dz=>{
-      if(Math.random()<0.85){
-        const winR = new THREE.Mesh(new THREE.CircleGeometry(wr,16), new THREE.MeshStandardMaterial({color:0xfff6c9, emissive:0xffe9a0, emissiveIntensity:0.3+Math.random()*0.1}));
-        winR.rotation.y = Math.PI/2;
-        winR.position.set(bw/2+0.02, y, dz*bd*0.28);
-        g.add(winR);
-        const winL = winR.clone(); winL.material = winR.material.clone();
-        winL.position.x = -bw/2-0.02; winL.rotation.y = -Math.PI/2;
-        g.add(winL);
-      }
-    });
-  }
-
   addContactShadow(g, bw*0.72, bd*0.66);
 
   scene.add(g);
@@ -3198,9 +3162,17 @@ function animate(){
    photographic textures don't read as dim under the game's stylized
    lighting the way the flat cartoon textures were tuned for.
 ============================================================ */
-const THEME_FILES = [
-  'multiplication_flyer/school.png', 'multiplication_flyer/apartmentbuilding.png', 'multiplication_flyer/firestation.png', 'multiplication_flyer/hospital.png',
-  'multiplication_flyer/whitehouse.png', 'multiplication_flyer/yellowhouse.png', 'multiplication_flyer/cityhall.png', 'multiplication_flyer/bluehouse.png', 'multiplication_flyer/greyhouse.png'
+// cityhall/firestation/hospital/school are landmark buildings — each should
+// appear exactly once in town. The house-color/apartment images repeat as
+// needed to cover every remaining building.
+const THEME_UNIQUE_FILES = [
+  'multiplication_flyer/cityhall.png', 'multiplication_flyer/firestation.png',
+  'multiplication_flyer/hospital.png', 'multiplication_flyer/school.png'
+];
+const THEME_REPEAT_FILES = [
+  'multiplication_flyer/whitehouse.png', 'multiplication_flyer/yellowhouse.png',
+  'multiplication_flyer/bluehouse.png', 'multiplication_flyer/greyhouse.png',
+  'multiplication_flyer/apartmentbuilding.png'
 ];
 function loadThemeImage(url){
   return new Promise((resolve)=>{
@@ -3255,10 +3227,32 @@ function applyThemeToBuilding(entry, img){
   facade.receiveShadow = true;
   entry.group.add(facade);
 }
-Promise.all(THEME_FILES.map(loadThemeImage)).then(images=>{
-  const loaded = images.filter(Boolean);
-  if(!loaded.length) return;
-  [...houses, ...decoys].forEach((entry,i)=> applyThemeToBuilding(entry, loaded[i % loaded.length]));
+Promise.all([
+  Promise.all(THEME_UNIQUE_FILES.map(loadThemeImage)),
+  Promise.all(THEME_REPEAT_FILES.map(loadThemeImage))
+]).then(([uniqueImgs, repeatImgs])=>{
+  uniqueImgs = uniqueImgs.filter(Boolean);
+  repeatImgs = repeatImgs.filter(Boolean);
+  if(!uniqueImgs.length && !repeatImgs.length) return;
+
+  const allBuildings = [...houses, ...decoys];
+  // shuffle so which specific buildings get the landmark textures varies
+  const order = allBuildings.map((_,i)=>i);
+  for(let i=order.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [order[i],order[j]] = [order[j],order[i]];
+  }
+
+  let repeatCursor = 0;
+  order.forEach((buildingIdx, pos)=>{
+    const entry = allBuildings[buildingIdx];
+    if(pos < uniqueImgs.length){
+      applyThemeToBuilding(entry, uniqueImgs[pos]);
+    } else if(repeatImgs.length){
+      applyThemeToBuilding(entry, repeatImgs[repeatCursor % repeatImgs.length]);
+      repeatCursor++;
+    }
+  });
 });
 
 animate();
