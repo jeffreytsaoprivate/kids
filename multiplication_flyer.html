@@ -1257,7 +1257,7 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
   // every building lines up square with the street grid
   g.rotation.y = facesCenter ? cardinalFacing(x,z) : 0;
 
-  const style = palIdx % 4; // 0 = pyramid, 1 = gable, 2 = flat, 3 = rounded dome
+  const style = palIdx % 3; // 0 = pyramid, 1 = gable, 2 = flat
   const bw = 7.4+Math.random()*1.4, bh=(4.0+Math.random()*1.2)*heightMult, bd=6.6;
   const roofMat = new THREE.MeshStandardMaterial({map:toyRoofTexture(pal.roof), color:0xffffff, roughness:0.55});
   const wallMat = new THREE.MeshStandardMaterial({map:toyWallTexture(pal.body), color:0xffffff, roughness:0.75});
@@ -1265,10 +1265,12 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
   body.position.y = bh/2; body.castShadow=true; body.receiveShadow=true;
   g.add(body);
 
+  const roofParts = [];
   if(style===0){
     const roof = new THREE.Mesh(new THREE.ConeGeometry(bw*0.82,3.0,4), roofMat);
     roof.position.y = bh + 1.5; roof.rotation.y = Math.PI/4; roof.castShadow=true;
     g.add(roof);
+    roofParts.push(roof);
   } else if(style===1){
     const roofRise = 2.3, halfW = bw/2 + 0.5;
     const slope = Math.atan2(roofRise, halfW);
@@ -1279,6 +1281,7 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
     const panelR = new THREE.Mesh(panelGeo, roofMat);
     panelR.position.set(halfW/2, bh+roofRise/2, 0); panelR.rotation.z = -slope; panelR.castShadow=true;
     g.add(panelL, panelR);
+    roofParts.push(panelL, panelR);
 
     // triangular gable-end infill — without this there's an open gap
     // between the flat wall top and the sloped roof at the front/back
@@ -1293,29 +1296,24 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
     gableFront.position.set(0, bh, bd/2);
     gableFront.castShadow = true;
     g.add(gableFront);
+    roofParts.push(gableFront);
     const gableBack = new THREE.Mesh(gableGeo, gableMat);
     gableBack.position.set(0, bh, -bd/2);
     gableBack.rotation.y = Math.PI;
     gableBack.castShadow = true;
     g.add(gableBack);
-  } else if(style===2){
+    roofParts.push(gableBack);
+  } else {
     const cap = new THREE.Mesh(new THREE.BoxGeometry(bw+0.5,0.4,bd+0.5), roofMat);
     cap.position.y = bh+0.2; cap.castShadow = true;
     g.add(cap);
+    roofParts.push(cap);
     const trim = new THREE.Mesh(new THREE.BoxGeometry(bw+0.5,0.7,0.18), new THREE.MeshStandardMaterial({color:pal.roof}));
     [1,-1].forEach(sz=>{
       const t = trim.clone();
       t.position.set(0, bh+0.75, sz*(bd/2+0.25));
       g.add(t);
     });
-  } else {
-    // rounded dome roof — the signature cute toy-world silhouette
-    const dome = new THREE.Mesh(new THREE.SphereGeometry(bw*0.5, 16, 10, 0, Math.PI*2, 0, Math.PI/1.9), new THREE.MeshStandardMaterial({color:pal.roof, roughness:0.35, metalness:0.05}));
-    dome.position.y = bh; dome.castShadow = true;
-    g.add(dome);
-    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.28,10,10), new THREE.MeshStandardMaterial({color:pal.roof, roughness:0.3}));
-    knob.position.y = bh + bw*0.34;
-    g.add(knob);
   }
 
   const door = new THREE.Mesh(new THREE.PlaneGeometry(1.3,2.2), new THREE.MeshStandardMaterial({map:doorWoodTexture(), color:0xffffff}));
@@ -1325,7 +1323,7 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
   addContactShadow(g, bw*0.72, bd*0.66);
 
   scene.add(g);
-  return { group:g, body, bodyWidth:bw, roofY:bh, worldPos:new THREE.Vector3(x,0,z) };
+  return { group:g, body, roofParts, bodyWidth:bw, roofY:bh, worldPos:new THREE.Vector3(x,0,z) };
 }
 
 /* ============================================================
@@ -1364,7 +1362,7 @@ houseCells.forEach((cell, i)=>{
   struct.body.material.emissiveIntensity = 0;
 
   houses.push({
-    group:struct.group, sign, signGlow, post, body:struct.body, number:null, isCorrect:false, wasReady:false,
+    group:struct.group, sign, signGlow, post, body:struct.body, roofParts:struct.roofParts, number:null, isCorrect:false, wasReady:false,
     worldPos: struct.worldPos, roofY: struct.roofY, bodyWidth: struct.bodyWidth
   });
 });
@@ -1390,7 +1388,7 @@ decoyCells.forEach((cell, i)=>{
   pkgSign.scale.set(6.8,6.8,1);
   struct.group.add(pkgSign);
 
-  decoys.push({ group:struct.group, body:struct.body, pkgSign, worldPos:struct.worldPos, roofY:struct.roofY, bodyWidth:struct.bodyWidth, isDepot:false });
+  decoys.push({ group:struct.group, body:struct.body, roofParts:struct.roofParts, pkgSign, worldPos:struct.worldPos, roofY:struct.roofY, bodyWidth:struct.bodyWidth, isDepot:false });
 });
 
 /* ============================================================
@@ -2687,6 +2685,13 @@ function updateActionUI(dt){
     if(isRinging){ bodyColor = 0xff4fd6; bodyIntensity = Math.max(bodyIntensity, ringPulse*0.7); }
     h.body.material.emissive.setHex(bodyColor);
     h.body.material.emissiveIntensity = THREE.MathUtils.lerp(h.body.material.emissiveIntensity, bodyIntensity, 0.25);
+    // keep the roof cap and ground-floor facade in sync with the wall so
+    // the whole building glows together, not just the top band
+    [h.roofCap, h.facade].forEach(mesh=>{
+      if(!mesh) return;
+      mesh.material.emissive.setHex(bodyColor);
+      mesh.material.emissiveIntensity = THREE.MathUtils.lerp(mesh.material.emissiveIntensity, bodyIntensity, 0.25);
+    });
 
     const signScale = (inAction || isRinging) ? 4.6+0.3*Math.sin(performance.now()/150) : 4.2;
     h.sign.scale.set(signScale, signScale, 1);
@@ -3198,34 +3203,64 @@ function cropBand(img, bandIndex){
   tex.colorSpace = THREE.SRGBColorSpace;
   return { tex, aspect: w/h };
 }
+// with the repeating themes (house colors, apartment) reused across ~28
+// buildings, re-cropping the same source PNG for every single building
+// would mean dozens of redundant canvas filter/draw operations and
+// duplicate GPU texture uploads for what are visually identical textures —
+// cache the cropped result per source image and hand out the same object
+const _themeTextureCache = new Map();
 function makeThemeTextures(img){
+  if(_themeTextureCache.has(img.src)) return _themeTextureCache.get(img.src);
   const wall = cropBand(img, 0);
   wall.tex.wrapS = wall.tex.wrapT = THREE.RepeatWrapping;
+  const roof = cropBand(img, 1);
+  roof.tex.wrapS = roof.tex.wrapT = THREE.RepeatWrapping;
   const sign = cropBand(img, 2); // ground-floor facade, used once — not tiled
   sign.tex.wrapS = sign.tex.wrapT = THREE.ClampToEdgeWrapping;
-  return { wall, sign };
+  const result = { wall, roof, sign };
+  _themeTextureCache.set(img.src, result);
+  return result;
 }
 function applyThemeToBuilding(entry, img){
   if(!img || !entry.body) return;
-  const textures = makeThemeTextures(img);
+  const textures = makeThemeTextures(img); // cached — shared across every building using this image
   const bw = entry.bodyWidth, bh = entry.roofY, bd = 6.6;
 
-  // wall: tile at one repeat per floor's height, keeping the source's own
-  // width:height ratio so the pattern never looks stretched or squashed
+  // wall/roof each need their own .repeat (it depends on this specific
+  // building's size), so clone the cached texture rather than mutating
+  // the shared one — clone() reuses the already-cropped canvas instead of
+  // re-running the crop, so this stays cheap even reused across buildings
   const floorH = 2.5;
   const wallTileH = floorH, wallTileW = wallTileH*textures.wall.aspect;
-  textures.wall.tex.repeat.set(Math.max(1,bw/wallTileW), Math.max(1,bh/wallTileH));
-  entry.body.material.map = textures.wall.tex;
+  const wallTex = textures.wall.tex.clone();
+  wallTex.repeat.set(Math.max(1,bw/wallTileW), Math.max(1,bh/wallTileH));
+  entry.body.material.map = wallTex;
   entry.body.material.needsUpdate = true;
 
-  // ground-floor facade: shown once across the full width, height derived
-  // from the image's own aspect ratio so it isn't stretched
+  // roof: the procedural pyramid/gable/flat/dome shapes don't map cleanly
+  // onto a single texture, so hide them and drop in a simple flat cap
+  // textured with the roof band instead — this is also what the drone
+  // actually sees while flying overhead
+  if(entry.roofParts) entry.roofParts.forEach(p=> p.visible = false);
+  const roofTileH = floorH, roofTileW = roofTileH*textures.roof.aspect;
+  const roofTex = textures.roof.tex.clone();
+  roofTex.repeat.set(Math.max(1,(bw+0.4)/roofTileW), Math.max(1,(bd+0.4)/roofTileH));
+  const roofMat = new THREE.MeshStandardMaterial({map:roofTex, color:0xffffff, roughness:0.8});
+  const roofCap = new THREE.Mesh(new THREE.BoxGeometry(bw+0.4,0.35,bd+0.4), roofMat);
+  roofCap.position.y = bh+0.2; roofCap.castShadow = true;
+  entry.group.add(roofCap);
+  entry.roofCap = roofCap;
+
+  // ground-floor facade: no per-building repeat needed (ClampToEdge, whole
+  // image across the plane regardless of plane size), so the cached
+  // texture can be shared directly with no clone
   const signW = bw, signH = signW/textures.sign.aspect;
   const signMat = new THREE.MeshStandardMaterial({map:textures.sign.tex, color:0xffffff, roughness:0.85});
   const facade = new THREE.Mesh(new THREE.PlaneGeometry(signW, signH), signMat);
   facade.position.set(0, signH/2, bd/2+0.03);
   facade.receiveShadow = true;
   entry.group.add(facade);
+  entry.facade = facade;
 }
 Promise.all([
   Promise.all(THEME_UNIQUE_FILES.map(loadThemeImage)),
