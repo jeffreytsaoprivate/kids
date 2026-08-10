@@ -1401,7 +1401,7 @@ houseCells.forEach((cell, i)=>{
 
   houses.push({
     group:struct.group, sign, signGlow, post, body:struct.body, number:null, isCorrect:false, wasReady:false,
-    worldPos: struct.worldPos, roofY: struct.roofY
+    worldPos: struct.worldPos, roofY: struct.roofY, bodyWidth: struct.bodyWidth
   });
 });
 
@@ -1426,7 +1426,7 @@ decoyCells.forEach((cell, i)=>{
   pkgSign.scale.set(6.8,6.8,1);
   struct.group.add(pkgSign);
 
-  decoys.push({ group:struct.group, pkgSign, worldPos:struct.worldPos, roofY:struct.roofY, isDepot:false });
+  decoys.push({ group:struct.group, body:struct.body, pkgSign, worldPos:struct.worldPos, roofY:struct.roofY, bodyWidth:struct.bodyWidth, isDepot:false });
 });
 
 /* ============================================================
@@ -3189,22 +3189,18 @@ function animate(){
 /* ============================================================
    THEMED BUILDING FACADES — loads the uploaded images dynamically
    (they live alongside this HTML file), crops each into its 3
-   horizontal bands, and builds real buildings using them as textures:
-     - top band: wall pattern, tiled across every side, aspect preserved
-     - middle band: roof pattern, tiled across the roof, aspect preserved
+   horizontal bands, and applies them to every house and decoy
+   building in town (cycling through the set):
+     - top band: wall pattern, tiled across the walls, aspect preserved
      - bottom band: the ground-floor facade, shown once (not tiled),
        scaled to cover one full side at ground level, aspect preserved
+   An emissive boost (using the same texture) is added so these
+   photographic textures don't read as dim under the game's stylized
+   lighting the way the flat cartoon textures were tuned for.
 ============================================================ */
 const THEME_FILES = [
-  'multiplication_flyer/school.png', 
-  'multiplication_flyer/apartmentbuilding.png', 
-  'multiplication_flyer/firestation.png', 
-  'multiplication_flyer/hospital.png',
-  'multiplication_flyer/whitehouse.png', 
-  'multiplication_flyer/yellowhouse.png', 
-  'multiplication_flyer/cityhall.png', 
-  'multiplication_flyer/bluehouse.png', 
-  'multiplication_flyer/greyhouse.png'
+  'multiplication_flyer/school.png', 'multiplication_flyer/apartmentbuilding.png', 'multiplication_flyer/firestation.png', 'multiplication_flyer/hospital.png',
+  'multiplication_flyer/whitehouse.png', 'multiplication_flyer/yellowhouse.png', 'multiplication_flyer/cityhall.png', 'multiplication_flyer/bluehouse.png', 'multiplication_flyer/greyhouse.png'
 ];
 function loadThemeImage(url){
   return new Promise((resolve)=>{
@@ -3219,6 +3215,12 @@ function cropBand(img, bandIndex){
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const ctx = c.getContext('2d');
+  // these are photographic source textures, which read noticeably darker
+  // than the game's flat cartoon textures once lit by the scene — brighten
+  // the pixels themselves so it stays consistent under any lighting angle,
+  // rather than fighting with the emissive glow the houses already use
+  // for the delivery-proximity indicator
+  ctx.filter = 'brightness(1.45) saturate(1.08)';
   ctx.drawImage(img, 0, bandIndex*h, w, h, 0, 0, w, h);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -3227,54 +3229,36 @@ function cropBand(img, bandIndex){
 function makeThemeTextures(img){
   const wall = cropBand(img, 0);
   wall.tex.wrapS = wall.tex.wrapT = THREE.RepeatWrapping;
-  const roof = cropBand(img, 1);
-  roof.tex.wrapS = roof.tex.wrapT = THREE.RepeatWrapping;
   const sign = cropBand(img, 2); // ground-floor facade, used once — not tiled
   sign.tex.wrapS = sign.tex.wrapT = THREE.ClampToEdgeWrapping;
-  return { wall, roof, sign };
+  return { wall, sign };
 }
-function buildThemedBuilding(x, z, textures, bw=8.2, bh=7.0, bd=6.6){
-  const g = new THREE.Group();
-  g.position.set(x,0,z);
+function applyThemeToBuilding(entry, img){
+  if(!img || !entry.body) return;
+  const textures = makeThemeTextures(img);
+  const bw = entry.bodyWidth, bh = entry.roofY, bd = 6.6;
 
   // wall: tile at one repeat per floor's height, keeping the source's own
   // width:height ratio so the pattern never looks stretched or squashed
   const floorH = 2.5;
   const wallTileH = floorH, wallTileW = wallTileH*textures.wall.aspect;
-  const wallMat = new THREE.MeshStandardMaterial({map:textures.wall.tex, color:0xffffff, roughness:0.85});
   textures.wall.tex.repeat.set(Math.max(1,bw/wallTileW), Math.max(1,bh/wallTileH));
-  const body = new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd), wallMat);
-  body.position.y = bh/2; body.castShadow = true; body.receiveShadow = true;
-  g.add(body);
-
-  // roof: same tiling approach, mapped across the roof footprint
-  const roofTileH = floorH, roofTileW = roofTileH*textures.roof.aspect;
-  const roofMat = new THREE.MeshStandardMaterial({map:textures.roof.tex, color:0xffffff, roughness:0.8});
-  textures.roof.tex.repeat.set(Math.max(1,(bw+0.4)/roofTileW), Math.max(1,(bd+0.4)/roofTileH));
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(bw+0.4,0.35,bd+0.4), roofMat);
-  roof.position.y = bh+0.2; roof.castShadow = true;
-  g.add(roof);
+  entry.body.material.map = textures.wall.tex;
+  entry.body.material.needsUpdate = true;
 
   // ground-floor facade: shown once across the full width, height derived
   // from the image's own aspect ratio so it isn't stretched
   const signW = bw, signH = signW/textures.sign.aspect;
-  const signMat = new THREE.MeshBasicMaterial({map:textures.sign.tex, transparent:true});
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(signW, signH), signMat);
-  sign.position.set(0, signH/2, bd/2+0.03);
-  g.add(sign);
-
-  addContactShadow(g, bw*0.72, bd*0.66);
-  scene.add(g);
-  return g;
+  const signMat = new THREE.MeshStandardMaterial({map:textures.sign.tex, color:0xffffff, roughness:0.85});
+  const facade = new THREE.Mesh(new THREE.PlaneGeometry(signW, signH), signMat);
+  facade.position.set(0, signH/2, bd/2+0.03);
+  facade.receiveShadow = true;
+  entry.group.add(facade);
 }
 Promise.all(THEME_FILES.map(loadThemeImage)).then(images=>{
-  const baseZ = (GRID_ROWS/2+1)*SPACING; // right where the drone starts, easy to spot
-  const spacing = 14;
-  const startX = -spacing*(images.length-1)/2;
-  images.forEach((img,i)=>{
-    if(!img) return;
-    buildThemedBuilding(startX+i*spacing, baseZ, makeThemeTextures(img));
-  });
+  const loaded = images.filter(Boolean);
+  if(!loaded.length) return;
+  [...houses, ...decoys].forEach((entry,i)=> applyThemeToBuilding(entry, loaded[i % loaded.length]));
 });
 
 animate();
