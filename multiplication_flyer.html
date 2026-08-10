@@ -342,6 +342,8 @@
 <script type="module">
 import * as THREE from "three";
 
+
+
 /* ============================================================
    CONFIG
 ============================================================ */
@@ -352,7 +354,7 @@ const WORLD_HALF = 130;
 const CALL_TIMEOUT_MS = 60000;
 const ACT_RANGE = 13;       // pickup/delivery trigger radius — forgiving, no precise aim needed
 const GLOW_RANGE = 26;      // house ring starts fading in within this radius while carrying
-const DRONE_ALT = 16;         // fixed flight altitude, no rise/descend
+const DRONE_ALT = 20;         // fixed flight altitude, no rise/descend
 
 let selectedTables = new Set([2,3,4,5,6,7,8,9]);
 let mathOperation = 'mul';
@@ -473,7 +475,8 @@ scene.add(sunGlow);
 /* ============================================================
    LIGHTS
 ============================================================ */
-scene.add(new THREE.HemisphereLight(0x8fd0e8, 0x5f9a52, 0.55));
+const hemiLight = new THREE.HemisphereLight(0x8fd0e8, 0x5f9a52, 0.55);
+scene.add(hemiLight);
 const sunLight = new THREE.DirectionalLight(0xffe3b0, 1.35);
 sunLight.position.set(-90, 130, -60);
 sunLight.castShadow = true;
@@ -491,7 +494,21 @@ const fillLight = new THREE.DirectionalLight(0x6fa9ff, 0.32);
 fillLight.position.set(100, 60, 90);
 scene.add(fillLight);
 
-scene.add(new THREE.AmbientLight(0xffffff,0.2));
+const ambientLight = new THREE.AmbientLight(0xffffff,0.2);
+scene.add(ambientLight);
+
+// baseline intensities to dim from/restore to when spotlighting a single
+// building (delivery-ready glow, or the phone-ring hint)
+const LIGHT_BASELINE = { hemi:hemiLight.intensity, sun:sunLight.intensity, fill:fillLight.intensity, amb:ambientLight.intensity };
+let cityDim = 0; // 0 = normal, 1 = fully dimmed
+function updateCityDim(dt, dimTarget){
+  cityDim = THREE.MathUtils.lerp(cityDim, dimTarget, 1-Math.pow(0.00002,dt));
+  const k = 1 - cityDim*0.72;
+  hemiLight.intensity = LIGHT_BASELINE.hemi*k;
+  sunLight.intensity = LIGHT_BASELINE.sun*k;
+  fillLight.intensity = LIGHT_BASELINE.fill*k;
+  ambientLight.intensity = LIGHT_BASELINE.amb*k;
+}
 
 /* ============================================================
    GROUND
@@ -1199,6 +1216,18 @@ function blobShadowTexture(){
     return new THREE.CanvasTexture(c);
   });
 }
+function signGlowTexture(){
+  return cachedTexture('signGlow', ()=>{
+    const c = document.createElement('canvas'); c.width=c.height=128;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(64,64,0,64,64,64);
+    g.addColorStop(0,'rgba(255,255,255,0.95)');
+    g.addColorStop(0.5,'rgba(255,255,255,0.35)');
+    g.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(0,0,128,128);
+    return new THREE.CanvasTexture(c);
+  });
+}
 function addContactShadow(parent, rx, rz, y=0.04){
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(rx*2, rz*2),
@@ -1293,69 +1322,85 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
   door.position.set(0, 1.1, bd/2+0.02);
   g.add(door);
 
-  // round porthole-style windows for extra toy charm
-  for(const dx of [-1,1]){
-    const win = new THREE.Mesh(new THREE.CircleGeometry(0.62,20), new THREE.MeshStandardMaterial({color:0xfff6c9, emissive:0xffe9a0, emissiveIntensity:0.35}));
-    win.position.set(dx*bw*0.28, 2.6, bd/2+0.02);
-    g.add(win);
-    const frame = new THREE.Mesh(new THREE.RingGeometry(0.62,0.78,20), new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.6}));
-    frame.position.set(dx*bw*0.28, 2.6, bd/2+0.015);
-    g.add(frame);
-  }
-
-  // taller decoy buildings get extra stacked window rows so they read as
-  // multi-storey skyscrapers rather than just a stretched house
-  if(heightMult>1.3){
-    const extraRows = Math.floor((heightMult-1)*2.6);
-    for(let r=1;r<=extraRows;r++){
-      for(const dx of [-1,1]){
-        const win = new THREE.Mesh(new THREE.CircleGeometry(0.5,16), new THREE.MeshStandardMaterial({color:0xfff6c9, emissive:0xffe9a0, emissiveIntensity:0.3}));
-        win.position.set(dx*bw*0.28, 2.6 + r*2.5, bd/2+0.02);
-        g.add(win);
+  // porthole-style windows on all 4 sides (front/back/left/right), with
+  // extra stacked rows for taller buildings — following the reference
+  // city's "4-sided facade" approach so buildings look real from every
+  // angle instead of just the front
+  const rows = 1 + (heightMult>1.3 ? Math.floor((heightMult-1)*2.6) : 0);
+  for(let r=0;r<rows;r++){
+    const y = 2.6 + r*2.5;
+    const wr = r===0 ? 0.62 : 0.5;
+    [-1,1].forEach(dx=>{
+      if(Math.random()<0.85){
+        const winF = new THREE.Mesh(new THREE.CircleGeometry(wr,16), new THREE.MeshStandardMaterial({color:0xfff6c9, emissive:0xffe9a0, emissiveIntensity:0.3+Math.random()*0.1}));
+        winF.position.set(dx*bw*0.28, y, bd/2+0.02);
+        g.add(winF);
+        const winB = winF.clone(); winB.material = winF.material.clone();
+        winB.position.z = -bd/2-0.02; winB.rotation.y = Math.PI;
+        g.add(winB);
+        if(r===0){
+          const frame = new THREE.Mesh(new THREE.RingGeometry(wr,wr+0.16,20), new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.6}));
+          frame.position.set(dx*bw*0.28, y, bd/2+0.015);
+          g.add(frame);
+        }
       }
-    }
+    });
+    [-1,1].forEach(dz=>{
+      if(Math.random()<0.85){
+        const winR = new THREE.Mesh(new THREE.CircleGeometry(wr,16), new THREE.MeshStandardMaterial({color:0xfff6c9, emissive:0xffe9a0, emissiveIntensity:0.3+Math.random()*0.1}));
+        winR.rotation.y = Math.PI/2;
+        winR.position.set(bw/2+0.02, y, dz*bd*0.28);
+        g.add(winR);
+        const winL = winR.clone(); winL.material = winR.material.clone();
+        winL.position.x = -bw/2-0.02; winL.rotation.y = -Math.PI/2;
+        g.add(winL);
+      }
+    });
   }
 
   addContactShadow(g, bw*0.72, bd*0.66);
 
   scene.add(g);
-  return { group:g, bodyWidth:bw, roofY:bh, worldPos:new THREE.Vector3(x,0,z) };
+  return { group:g, body, bodyWidth:bw, roofY:bh, worldPos:new THREE.Vector3(x,0,z) };
 }
 
 /* ============================================================
    HOUSES (numbered targets)
 ============================================================ */
-function buildHouseRing(struct){
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(6.4, 7.9, 40),
-    new THREE.MeshBasicMaterial({color:0xffe74c, transparent:true, opacity:0, side:THREE.DoubleSide})
-  );
-  ring.rotation.x = -Math.PI/2;
-  ring.position.set(struct.worldPos.x, 0.06, struct.worldPos.z);
-  scene.add(ring);
-  return ring;
-}
-
 const houses = [];
 houseCells.forEach((cell, i)=>{
   const struct = buildStructure(cell.x, cell.z, i, true);
 
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,9.5,6), new THREE.MeshStandardMaterial({color:0x8a6a4a}));
-  post.position.set(struct.bodyWidth/2+2.0, 4.85, 3.6);
+  // sign post rises from the roof instead of standing beside the house —
+  // kept short so the drone (flying well above) never clips it
+  const postBaseY = struct.roofY + 1.4;
+  const postHeight = 3.0;
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.14,postHeight,6), new THREE.MeshStandardMaterial({color:0x8a6a4a}));
+  post.position.set(0, postBaseY + postHeight/2, 0);
   post.castShadow = true;
   post.visible = false; // only revealed once a package is being carried
   struct.group.add(post);
 
+  const signY = postBaseY + postHeight + 0.6;
   const sign = new THREE.Sprite(new THREE.SpriteMaterial({transparent:true, opacity:1, depthTest:true}));
-  sign.position.set(struct.bodyWidth/2+2.0, 10.2, 3.6);
+  sign.position.set(0, signY, 0);
   sign.scale.set(4.2,4.2,1);
   sign.visible = false; // only revealed once a package is being carried
   struct.group.add(sign);
 
-  const ring = buildHouseRing(struct);
+  // soft additive glow halo behind the number — lit up yellow when the
+  // drone is close enough to deliver, or pink during a phone-ring hint
+  const signGlow = new THREE.Sprite(new THREE.SpriteMaterial({map:signGlowTexture(), color:0xffe74c, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false}));
+  signGlow.position.set(0, signY, -0.05);
+  signGlow.scale.set(13,13,1);
+  signGlow.visible = false;
+  struct.group.add(signGlow);
+
+  struct.body.material.emissive = new THREE.Color(0x000000);
+  struct.body.material.emissiveIntensity = 0;
 
   houses.push({
-    group:struct.group, sign, post, ring, number:null, isCorrect:false, wasReady:false,
+    group:struct.group, sign, signGlow, post, body:struct.body, number:null, isCorrect:false, wasReady:false,
     worldPos: struct.worldPos, roofY: struct.roofY
   });
 });
@@ -1445,6 +1490,7 @@ headlight.position.set(0, -0.2, 1.4);
 drone.add(headlight);
 
 drone.position.set(0, DRONE_ALT, (GRID_ROWS/2+1)*SPACING);
+drone.scale.setScalar(0.5); // a delivery drone should read much smaller than the buildings/cars around it
 scene.add(drone);
 
 const packageAnchor = new THREE.Object3D();
@@ -1606,7 +1652,7 @@ function makeMiniDrone(){
     arms.push(prop);
     g.add(armGroup);
   });
-  g.scale.setScalar(0.42);
+  g.scale.setScalar(0.21); // proportioned relative to the (now smaller) main drone
   return {group:g, arms};
 }
 
@@ -2646,9 +2692,10 @@ function resolveDelivery(idx, correct){
 /* ============================================================
    RING GLOW (proximity feedback for delivery, which still needs a press)
 ============================================================ */
-function updateActionUI(){
+function updateActionUI(dt){
   let anyReady = false;
-  houses.forEach(h=>{
+  let dimTarget = 0;
+  houses.forEach((h,i)=>{
     h.sign.visible = state.carrying;
     h.post.visible = state.carrying;
 
@@ -2661,12 +2708,31 @@ function updateActionUI(){
     if(inAction && !h.wasReady) sfxChimeReady();
     h.wasReady = inAction;
     if(inAction) anyReady = true;
-    const pulse = inAction ? (0.75+0.25*Math.sin(performance.now()/140)) : target*0.6;
-    h.ring.material.opacity = THREE.MathUtils.lerp(h.ring.material.opacity, pulse, 0.25);
-    h.ring.material.color.set(inAction ? 0x4fbf5f : 0xffe74c);
-    const s = inAction ? 1.15 : 1.0;
-    h.ring.scale.setScalar(THREE.MathUtils.lerp(h.ring.scale.x, s, 0.2));
+
+    const isRinging = state.called && i===state.correctHouseIdx;
+    dimTarget = Math.max(dimTarget, target, isRinging ? 1 : 0);
+
+    // the building itself and its number sign light up when close enough
+    // to deliver (yellow -> green), or pink while that house's phone is
+    // ringing — instead of a ring glowing on the ground
+    const pulse = inAction ? (0.6+0.4*Math.sin(performance.now()/140)) : target*0.3;
+    const ringPulse = isRinging ? (0.6+0.4*Math.sin(performance.now()/180)) : 0;
+
+    let bodyColor = 0xffe74c, bodyIntensity = target*0.18;
+    if(inAction){ bodyColor = 0x4fbf5f; bodyIntensity = pulse*0.7; }
+    if(isRinging){ bodyColor = 0xff4fd6; bodyIntensity = Math.max(bodyIntensity, ringPulse*0.7); }
+    h.body.material.emissive.setHex(bodyColor);
+    h.body.material.emissiveIntensity = THREE.MathUtils.lerp(h.body.material.emissiveIntensity, bodyIntensity, 0.25);
+
+    const signScale = (inAction || isRinging) ? 4.6+0.3*Math.sin(performance.now()/150) : 4.2;
+    h.sign.scale.set(signScale, signScale, 1);
+    h.signGlow.visible = state.carrying && (target>0.02 || isRinging);
+    h.signGlow.material.color.setHex(isRinging ? 0xff4fd6 : 0xffe74c);
+    const glowOpacity = isRinging ? (0.5+ringPulse*0.5) : (inAction ? (0.5+pulse*0.5) : target*0.45);
+    h.signGlow.material.opacity = THREE.MathUtils.lerp(h.signGlow.material.opacity, glowOpacity, 0.25);
   });
+
+  updateCityDim(dt, dimTarget);
 
   // action button label / gentle "ready" pulse
   let ready = false;
@@ -3065,7 +3131,7 @@ function animate(){
     updateUpgradeFX(dt);
     checkCallTimeout();
     checkAutoActions();
-    updateActionUI();
+    updateActionUI(dt);
     updatePickupArrow();
     updateCallBubble();
     drawMap();
@@ -3119,6 +3185,97 @@ function animate(){
     introMuteBtn.textContent = '🔇 Sound: Off'; introMuteBtn.classList.add('muted');
   }
 })();
+
+/* ============================================================
+   THEMED BUILDING FACADES — loads the uploaded images dynamically
+   (they live alongside this HTML file), crops each into its 3
+   horizontal bands, and builds real buildings using them as textures:
+     - top band: wall pattern, tiled across every side, aspect preserved
+     - middle band: roof pattern, tiled across the roof, aspect preserved
+     - bottom band: the ground-floor facade, shown once (not tiled),
+       scaled to cover one full side at ground level, aspect preserved
+============================================================ */
+const THEME_FILES = [
+  'https://jeffreytsaoprivate.github.io/kids/multiplication_flyer/school.png', 
+  'https://jeffreytsaoprivate.github.io/kids/multiplication_flyer/apartmentbuilding.png', 
+  'https://jeffreytsaoprivate.github.io/kids/multiplication_flyer/firestation.png', 
+  'https://jeffreytsaoprivate.github.io/kids/multiplication_flyer/hospital.png',
+  'https://jeffreytsaoprivate.github.io/kids/multiplication_flyer/whitehouse.png', 
+  'https://jeffreytsaoprivate.github.io/kids/multiplication_flyer/yellowhouse.png', 
+  'https://jeffreytsaoprivate.github.io/kids/multiplication_flyer/cityhall.png', 
+  'https://jeffreytsaoprivate.github.io/kids/multiplication_flyer/bluehouse.png', 
+  'https://jeffreytsaoprivate.github.io/kids/multiplication_flyer/greyhouse.png'
+];
+function loadThemeImage(url){
+  return new Promise((resolve)=>{
+    const img = new Image();
+    img.onload = ()=> resolve(img);
+    img.onerror = ()=> resolve(null);
+    img.src = url;
+  });
+}
+function cropBand(img, bandIndex){
+  const w = img.width, h = Math.floor(img.height/3);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, bandIndex*h, w, h, 0, 0, w, h);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return { tex, aspect: w/h };
+}
+function makeThemeTextures(img){
+  const wall = cropBand(img, 0);
+  wall.tex.wrapS = wall.tex.wrapT = THREE.RepeatWrapping;
+  const roof = cropBand(img, 1);
+  roof.tex.wrapS = roof.tex.wrapT = THREE.RepeatWrapping;
+  const sign = cropBand(img, 2); // ground-floor facade, used once — not tiled
+  sign.tex.wrapS = sign.tex.wrapT = THREE.ClampToEdgeWrapping;
+  return { wall, roof, sign };
+}
+function buildThemedBuilding(x, z, textures, bw=8.2, bh=7.0, bd=6.6){
+  const g = new THREE.Group();
+  g.position.set(x,0,z);
+
+  // wall: tile at one repeat per floor's height, keeping the source's own
+  // width:height ratio so the pattern never looks stretched or squashed
+  const floorH = 2.5;
+  const wallTileH = floorH, wallTileW = wallTileH*textures.wall.aspect;
+  const wallMat = new THREE.MeshStandardMaterial({map:textures.wall.tex, color:0xffffff, roughness:0.85});
+  textures.wall.tex.repeat.set(Math.max(1,bw/wallTileW), Math.max(1,bh/wallTileH));
+  const body = new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd), wallMat);
+  body.position.y = bh/2; body.castShadow = true; body.receiveShadow = true;
+  g.add(body);
+
+  // roof: same tiling approach, mapped across the roof footprint
+  const roofTileH = floorH, roofTileW = roofTileH*textures.roof.aspect;
+  const roofMat = new THREE.MeshStandardMaterial({map:textures.roof.tex, color:0xffffff, roughness:0.8});
+  textures.roof.tex.repeat.set(Math.max(1,(bw+0.4)/roofTileW), Math.max(1,(bd+0.4)/roofTileH));
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(bw+0.4,0.35,bd+0.4), roofMat);
+  roof.position.y = bh+0.2; roof.castShadow = true;
+  g.add(roof);
+
+  // ground-floor facade: shown once across the full width, height derived
+  // from the image's own aspect ratio so it isn't stretched
+  const signW = bw, signH = signW/textures.sign.aspect;
+  const signMat = new THREE.MeshBasicMaterial({map:textures.sign.tex, transparent:true});
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(signW, signH), signMat);
+  sign.position.set(0, signH/2, bd/2+0.03);
+  g.add(sign);
+
+  addContactShadow(g, bw*0.72, bd*0.66);
+  scene.add(g);
+  return g;
+}
+Promise.all(THEME_FILES.map(loadThemeImage)).then(images=>{
+  const baseZ = (GRID_ROWS/2+1)*SPACING; // right where the drone starts, easy to spot
+  const spacing = 14;
+  const startX = -spacing*(images.length-1)/2;
+  images.forEach((img,i)=>{
+    if(!img) return;
+    buildThemedBuilding(startX+i*spacing, baseZ, makeThemeTextures(img));
+  });
+});
 
 animate();
 </script>
