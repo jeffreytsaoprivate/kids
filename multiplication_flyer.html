@@ -764,15 +764,50 @@ for(let i=0;i<CAR_COUNT;i++){
   const laneSign = dir>0 ? 1 : -1; // drive on the correct side of the road
   const car = makeCar(CAR_COLORS[i%CAR_COLORS.length]);
   const t = (Math.random()-0.5)*roadSpan;
-  car.userData = { road, dir, laneSign, t, speed: 6+Math.random()*5 };
+  car.userData = { road, dir, laneSign, t, speed: 6+Math.random()*5, currentSpeed: 0, pauseTimer:0, lastStopKey:null };
   scene.add(car);
   cars.push(car);
 }
+function nearestIntersectionAhead(u){
+  const coords = u.road.isVertical ? horizontalRoadZs : verticalRoadXs;
+  let best = null, bestDist = Infinity;
+  coords.forEach(c=>{
+    const d = (c-u.t)*u.dir;
+    if(d>0.3 && d<bestDist){ bestDist = d; best = c; }
+  });
+  return best===null ? null : {coord:best, dist:bestDist};
+}
 function updateCars(dt){
   const half = roadSpan/2;
+  const FOLLOW_STOP = 3.6;       // don't get closer than this to the car ahead
+  const INTERSECTION_ZONE = 2.4; // start pausing this far before an intersection
+
   cars.forEach(car=>{
     const u = car.userData;
-    u.t += u.dir*u.speed*dt;
+
+    // brief pause at each intersection, once per pass
+    const ahead = nearestIntersectionAhead(u);
+    if(u.lastStopKey!==null && (!ahead || ahead.coord!==u.lastStopKey)) u.lastStopKey = null;
+    if(u.pauseTimer<=0 && ahead && ahead.dist<INTERSECTION_ZONE && u.lastStopKey!==ahead.coord){
+      u.pauseTimer = 0.7+Math.random()*0.6;
+      u.lastStopKey = ahead.coord;
+    }
+    if(u.pauseTimer>0) u.pauseTimer -= dt;
+
+    // don't run into the car ahead on the same road & direction
+    let blocked = false;
+    for(const other of cars){
+      if(other===car) continue;
+      const ou = other.userData;
+      if(ou.road!==u.road || ou.dir!==u.dir) continue;
+      const aheadDist = (ou.t-u.t)*u.dir;
+      if(aheadDist>0 && aheadDist<FOLLOW_STOP){ blocked = true; break; }
+    }
+
+    const targetSpeed = (u.pauseTimer>0 || blocked) ? 0 : u.speed;
+    u.currentSpeed = THREE.MathUtils.lerp(u.currentSpeed, targetSpeed, 1-Math.pow(0.0008,dt));
+
+    u.t += u.dir*u.currentSpeed*dt;
     if(u.t > half) u.t = -half;
     if(u.t < -half) u.t = half;
     placeOnRoad(car, u.road, u.t, u.laneSign*1.7);
@@ -792,27 +827,49 @@ function makePerson(){
   const g = new THREE.Group();
   const skin = SKIN_TONES[Math.floor(Math.random()*SKIN_TONES.length)];
   const shirt = SHIRT_COLORS[Math.floor(Math.random()*SHIRT_COLORS.length)];
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.34,0.55,4,8), new THREE.MeshStandardMaterial({color:shirt, roughness:0.7}));
-  body.position.y = 0.72; body.castShadow = true;
+  const skinMat = new THREE.MeshStandardMaterial({color:skin, roughness:0.6});
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.3,0.5,4,8), new THREE.MeshStandardMaterial({color:shirt, roughness:0.7}));
+  body.position.y = 0.87; body.castShadow = true;
   g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28,12,10), new THREE.MeshStandardMaterial({color:skin, roughness:0.6}));
-  head.position.y = 1.32; head.castShadow = true;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28,12,10), skinMat);
+  head.position.y = 1.42; head.castShadow = true;
   g.add(head);
   const hairColors = [0x2b2019,0x5a3a24,0x8a5a3a,0xd9c07a,0x1a1a1a];
   const hair = new THREE.Mesh(new THREE.SphereGeometry(0.3,10,8,0,Math.PI*2,0,Math.PI/1.8), new THREE.MeshStandardMaterial({color:hairColors[Math.floor(Math.random()*hairColors.length)]}));
-  hair.position.y = 1.4;
+  hair.position.y = 1.5;
   g.add(hair);
+
+  // legs pivot from a hip joint so the walk cycle swings them naturally
+  // instead of just rotating a capsule around its own center
   const legMat = new THREE.MeshStandardMaterial({color:0x3a3a4a});
   const legs = [];
   [-0.13,0.13].forEach(lx=>{
-    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.09,0.34,4,6), legMat);
-    leg.position.set(lx,0.3,0);
-    g.add(leg);
-    legs.push(leg);
+    const hip = new THREE.Group();
+    hip.position.set(lx, 0.62, 0);
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.085,0.48,4,6), legMat);
+    leg.position.y = -0.28;
+    leg.castShadow = true;
+    hip.add(leg);
+    g.add(hip);
+    legs.push(hip);
   });
+
+  // arms pivot from a shoulder joint, swinging opposite the matching-side leg
+  const arms = [];
+  [-0.4,0.4].forEach(ax=>{
+    const shoulder = new THREE.Group();
+    shoulder.position.set(ax, 1.08, 0);
+    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.068,0.4,4,6), skinMat);
+    arm.position.y = -0.24;
+    arm.castShadow = true;
+    shoulder.add(arm);
+    g.add(shoulder);
+    arms.push(shoulder);
+  });
+
   g.scale.setScalar(0.95+Math.random()*0.3);
   addContactShadow(g, 0.5, 0.4);
-  return {group:g, legs};
+  return {group:g, legs, arms};
 }
 
 function makeDog(){
@@ -915,6 +972,12 @@ function updateTownsfolk(dt){
     p.legs.forEach((leg,i)=>{
       leg.rotation.x = Math.sin(walkPhase + i*Math.PI)*0.5;
     });
+    if(p.arms){
+      // arms swing opposite the matching-side leg, like a natural gait
+      p.arms.forEach((arm,i)=>{
+        arm.rotation.x = Math.sin(walkPhase + i*Math.PI + Math.PI)*0.4;
+      });
+    }
   });
 }
 
@@ -1362,12 +1425,6 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
     cap.position.y = bh+0.2; cap.castShadow = true;
     g.add(cap);
     roofSurfaces.push(cap);
-    const trim = new THREE.Mesh(new THREE.BoxGeometry(bw+0.5,0.7,0.18), new THREE.MeshStandardMaterial({color:pal.roof}));
-    [1,-1].forEach(sz=>{
-      const t = trim.clone();
-      t.position.set(0, bh+0.75, sz*(bd/2+0.25));
-      g.add(t);
-    });
   }
 
   const door = new THREE.Mesh(new THREE.PlaneGeometry(1.3,2.2), new THREE.MeshStandardMaterial({map:doorWoodTexture(), color:0xffffff}));
@@ -1387,17 +1444,9 @@ const houses = [];
 houseCells.forEach((cell, i)=>{
   const struct = buildStructure(cell.x, cell.z, i, true);
 
-  // sign post rises from the roof instead of standing beside the house —
-  // kept short so the drone (flying well above) never clips it
-  const postBaseY = struct.roofY + 1.4;
-  const postHeight = 3.0;
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.14,postHeight,6), new THREE.MeshStandardMaterial({color:0x8a6a4a}));
-  post.position.set(0, postBaseY + postHeight/2, 0);
-  post.castShadow = true;
-  post.visible = false; // only revealed once a package is being carried
-  struct.group.add(post);
-
-  const signY = postBaseY + postHeight + 0.6;
+  // number sign floats above the roof — no pole connecting it to the house.
+  // Positioned to clear the tallest roof style (pyramid, ~roofY+3.0)
+  const signY = struct.roofY + 3.6;
   const sign = new THREE.Sprite(new THREE.SpriteMaterial({transparent:true, opacity:1, depthTest:true}));
   sign.position.set(0, signY, 0);
   sign.scale.set(4.2,4.2,1);
@@ -1416,7 +1465,7 @@ houseCells.forEach((cell, i)=>{
   struct.body.material.emissiveIntensity = 0;
 
   houses.push({
-    group:struct.group, sign, signGlow, post, body:struct.body, roofSurfaces:struct.roofSurfaces, number:null, isCorrect:false, wasReady:false,
+    group:struct.group, sign, signGlow, body:struct.body, roofSurfaces:struct.roofSurfaces, number:null, isCorrect:false, wasReady:false,
     worldPos: struct.worldPos, roofY: struct.roofY, bodyWidth: struct.bodyWidth
   });
 });
@@ -2713,7 +2762,6 @@ function updateActionUI(dt){
   let dimTarget = 0;
   houses.forEach((h,i)=>{
     h.sign.visible = state.carrying;
-    h.post.visible = state.carrying;
 
     let target = 0;
     if(state.carrying && !state.delivering){
@@ -3360,6 +3408,33 @@ Promise.all([
    ROAD / INTERSECTION / GRASS TEXTURES — loaded dynamically from the
    same subfolder as the building facades
 ============================================================ */
+// builds a bigger "super-tile" out of several randomly rotated/flipped
+// copies of the grass tile, so the repeating pattern doesn't look like an
+// obvious grid when tiled across the whole ground
+function buildGrassMosaic(img){
+  const tile = img.width, cols = 4;
+  const c = document.createElement('canvas');
+  c.width = tile*cols; c.height = tile*cols;
+  const ctx = c.getContext('2d');
+  const orientations = [
+    ()=> ctx.setTransform(1,0,0,1,0,0),
+    ()=> ctx.setTransform(-1,0,0,1,tile,0),
+    ()=> ctx.setTransform(1,0,0,-1,0,tile),
+    ()=> ctx.setTransform(-1,0,0,-1,tile,tile),
+    ()=> ctx.setTransform(0,1,-1,0,tile,0),
+    ()=> ctx.setTransform(0,-1,1,0,0,tile),
+  ];
+  for(let ry=0; ry<cols; ry++){
+    for(let rx=0; rx<cols; rx++){
+      ctx.save();
+      ctx.translate(rx*tile, ry*tile);
+      orientations[Math.floor(Math.random()*orientations.length)]();
+      ctx.drawImage(img, 0, 0);
+      ctx.restore();
+    }
+  }
+  return c;
+}
 Promise.all([
   loadThemeImage('multiplication_flyer/road.png'),
   loadThemeImage('multiplication_flyer/intersection.png'),
@@ -3369,7 +3444,7 @@ Promise.all([
     const tex = new THREE.Texture(roadImg);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(1, roadSpan/32); // one image repeat ~= 32 world units of dashes
+    tex.repeat.set(1, roadSpan/14); // denser tiling instead of a long stretch
     tex.needsUpdate = true;
     roadMat.map = tex;
     roadMat.color.set(0xffffff);
@@ -3384,11 +3459,13 @@ Promise.all([
     intersectionMat.needsUpdate = true;
   }
   if(grassImg){
-    const tex = new THREE.Texture(grassImg);
+    const mosaic = buildGrassMosaic(grassImg);
+    const tex = new THREE.CanvasTexture(mosaic);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     const groundSize = WORLD_HALF*2.6;
-    tex.repeat.set(groundSize/6, groundSize/6); // one image repeat ~= 6 world units
+    const superTileWorldSize = 2.2*4; // 4x4 mosaic of ~2.2-unit tiles — much smaller/denser than before
+    tex.repeat.set(groundSize/superTileWorldSize, groundSize/superTileWorldSize);
     tex.needsUpdate = true;
     groundMat.map = tex;
     groundMat.needsUpdate = true;
