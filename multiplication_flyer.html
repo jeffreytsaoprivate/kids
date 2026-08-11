@@ -1069,12 +1069,14 @@ for(let i=0;i<70;i++){
   decorGroup.add(t);
 }
 // park plots: cluster of trees + a little pond
+const ponds = [];
 parkCells.forEach(cell=>{
   const g = new THREE.Group();
   g.position.set(cell.x, 0, cell.z);
   const pond = new THREE.Mesh(new THREE.CircleGeometry(4.2,20), new THREE.MeshStandardMaterial({color:0x6fb7d9, roughness:0.2, metalness:0.1}));
   pond.rotation.x = -Math.PI/2; pond.position.y = 0.03;
   g.add(pond);
+  ponds.push(pond);
   for(let i=0;i<4;i++){
     let a, r, x, z, guard=0;
     do{
@@ -3416,13 +3418,16 @@ function buildGrassMosaic(img){
   const c = document.createElement('canvas');
   c.width = tile*cols; c.height = tile*cols;
   const ctx = c.getContext('2d');
+  // ctx.transform() COMPOSES with the current matrix (unlike setTransform,
+  // which replaces it outright) — needed so each orientation lands inside
+  // its own cell instead of every cell overwriting the same top-left spot
   const orientations = [
-    ()=> ctx.setTransform(1,0,0,1,0,0),
-    ()=> ctx.setTransform(-1,0,0,1,tile,0),
-    ()=> ctx.setTransform(1,0,0,-1,0,tile),
-    ()=> ctx.setTransform(-1,0,0,-1,tile,tile),
-    ()=> ctx.setTransform(0,1,-1,0,tile,0),
-    ()=> ctx.setTransform(0,-1,1,0,0,tile),
+    ()=> ctx.transform(1,0,0,1,0,0),
+    ()=> ctx.transform(-1,0,0,1,tile,0),
+    ()=> ctx.transform(1,0,0,-1,0,tile),
+    ()=> ctx.transform(-1,0,0,-1,tile,tile),
+    ()=> ctx.transform(0,1,-1,0,tile,0),
+    ()=> ctx.transform(0,-1,1,0,0,tile),
   ];
   for(let ry=0; ry<cols; ry++){
     for(let rx=0; rx<cols; rx++){
@@ -3438,8 +3443,9 @@ function buildGrassMosaic(img){
 Promise.all([
   loadThemeImage('multiplication_flyer/road.png'),
   loadThemeImage('multiplication_flyer/intersection.png'),
-  loadThemeImage('multiplication_flyer/grass.png')
-]).then(([roadImg, intersectionImg, grassImg])=>{
+  loadThemeImage('multiplication_flyer/grass.png'),
+  loadThemeImage('multiplication_flyer/pond.png')
+]).then(([roadImg, intersectionImg, grassImg, pondImg])=>{
   if(roadImg){
     const tex = new THREE.Texture(roadImg);
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -3469,6 +3475,16 @@ Promise.all([
     tex.needsUpdate = true;
     groundMat.map = tex;
     groundMat.needsUpdate = true;
+  }
+  if(pondImg){
+    const tex = new THREE.Texture(pondImg);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+    ponds.forEach(pond=>{
+      pond.material.map = tex;
+      pond.material.color.set(0xffffff);
+      pond.material.needsUpdate = true;
+    });
   }
 });
 
