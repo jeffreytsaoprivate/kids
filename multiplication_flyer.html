@@ -149,11 +149,24 @@
   /* ---------- Minimap ---------- */
   #mapWrap{
     position:fixed; bottom:16px; left:16px; z-index:20;
+    display:flex; align-items:flex-end;
+  }
+  #mapInner{
     background:rgba(255,253,247,.92); border:3px solid var(--card-border);
     border-radius:16px; padding:8px; box-shadow:var(--shadow);
+    transition: margin-left .3s ease, opacity .3s ease;
+    overflow:hidden;
   }
-  #mapWrap .label{font-family:'Fredoka',sans-serif; font-size:11px; font-weight:600; text-align:center; margin-bottom:4px; color:#6b5f45;}
+  #mapWrap.collapsed #mapInner{ margin-left:-198px; opacity:0; pointer-events:none; }
+  #mapInner .label{font-family:'Fredoka',sans-serif; font-size:11px; font-weight:600; text-align:center; margin-bottom:4px; color:#6b5f45;}
   canvas#mapCanvas{display:block; border-radius:10px;}
+  #mapToggleBtn{
+    width:26px; height:42px; margin-bottom:8px;
+    border-radius:0 12px 12px 0; border:3px solid var(--card-border); border-left:none;
+    background:rgba(255,253,247,.92); box-shadow:var(--shadow);
+    font-size:13px; color:#6b5f45; cursor:pointer; z-index:21;
+    display:flex; align-items:center; justify-content:center;
+  }
 
   /* ---------- Controls hint ---------- */
   #controlsHint{
@@ -308,8 +321,11 @@
 </div>
 
 <div id="mapWrap">
-  <div class="label">📍 MAP</div>
-  <canvas id="mapCanvas" width="170" height="170"></canvas>
+  <button id="mapToggleBtn" title="Hide/show map">◀</button>
+  <div id="mapInner">
+    <div class="label">📍 MAP</div>
+    <canvas id="mapCanvas" width="170" height="170"></canvas>
+  </div>
 </div>
 
 <div id="joystickZone"></div>
@@ -573,9 +589,10 @@ const groundGeo = new THREE.PlaneGeometry(WORLD_HALF*2.6, WORLD_HALF*2.6, 90, 90
   }
   groundGeo.computeVertexNormals();
 }
+const groundMat = new THREE.MeshStandardMaterial({map:grassTexture(), roughness:1});
 const ground = new THREE.Mesh(
   groundGeo,
-  new THREE.MeshStandardMaterial({map:grassTexture(), roughness:1})
+  groundMat
 );
 ground.rotation.x = -Math.PI/2;
 ground.receiveShadow = true;
@@ -650,25 +667,30 @@ const roadMat = new THREE.MeshStandardMaterial({map:asphaltTexture(), color:0xcf
 const roadSpan = (Math.max(GRID_COLS,GRID_ROWS))*SPACING + SPACING*1.3;
 
 const roads = [];
+const verticalRoadXs = [], horizontalRoadZs = [];
 function addRoad(isVertical, offset){
   const geo = isVertical
     ? new THREE.PlaneGeometry(6.2, roadSpan)
     : new THREE.PlaneGeometry(roadSpan, 6.2);
+  if(!isVertical){
+    // the road texture's dash pattern runs along its V axis — for a
+    // horizontal road the "length" direction is U by default, so swap
+    // U/V on the geometry itself to keep the dashes running lengthwise
+    const uv = geo.attributes.uv;
+    for(let i=0;i<uv.count;i++){
+      const u = uv.getX(i), v = uv.getY(i);
+      uv.setXY(i, v, u);
+    }
+    uv.needsUpdate = true;
+  }
   const m = new THREE.Mesh(geo, roadMat);
   m.rotation.x = -Math.PI/2;
   m.position.set(isVertical?offset:0, 0.01, isVertical?0:offset);
   m.receiveShadow = true;
   scene.add(m);
-  // dashed centerline
-  const lineMat = new THREE.MeshBasicMaterial({color:0xf4e9c8});
-  for(let d=-roadSpan/2; d<roadSpan/2; d+=8){
-    const dash = new THREE.Mesh(new THREE.PlaneGeometry(isVertical?0.4:1.6, isVertical?1.6:0.4), lineMat);
-    dash.rotation.x = -Math.PI/2;
-    dash.position.set(isVertical?offset:d, 0.02, isVertical?d:offset);
-    scene.add(dash);
-  }
   const road = {isVertical, base:offset};
   roads.push(road);
+  if(isVertical) verticalRoadXs.push(offset); else horizontalRoadZs.push(offset);
   return road;
 }
 for(let c=0;c<GRID_COLS-1;c++){
@@ -679,6 +701,20 @@ for(let r=0;r<GRID_ROWS-1;r++){
   const z = ((r - (GRID_ROWS-1)/2) + 0.5) * SPACING;
   addRoad(false, z);
 }
+// clean intersection tile wherever a vertical and horizontal road cross,
+// so the dashed patterns don't overlap messily at each crossing
+const intersectionMat = new THREE.MeshStandardMaterial({color:0xcfcfd2, roughness:1});
+const intersectionMeshes = [];
+verticalRoadXs.forEach(x=>{
+  horizontalRoadZs.forEach(z=>{
+    const im = new THREE.Mesh(new THREE.PlaneGeometry(6.2,6.2), intersectionMat);
+    im.rotation.x = -Math.PI/2;
+    im.position.set(x, 0.015, z);
+    im.receiveShadow = true;
+    scene.add(im);
+    intersectionMeshes.push(im);
+  });
+});
 
 // straight-road helpers (position/heading along a road at distance t)
 function roadPoint(road, t){
@@ -945,11 +981,24 @@ function makeTree(){
   return g;
 }
 const decorGroup = new THREE.Group();
+// roads are long straight strips, not just a circular zone around town —
+// check perpendicular distance to every road (within its finite span)
+// so scattered trees never land on top of one
+const ROAD_AVOID = 5.5;
+function tooCloseToRoad(x,z){
+  return roads.some(r=>{
+    const d = r.isVertical ? Math.abs(x-r.base) : Math.abs(z-r.base);
+    if(d > ROAD_AVOID) return false;
+    const along = r.isVertical ? z : x;
+    return along > -roadSpan/2-2 && along < roadSpan/2+2;
+  });
+}
 // scattered background trees, far from the grid town
 for(let i=0;i<70;i++){
   const x = (Math.random()-0.5)*WORLD_HALF*2*0.95;
   const z = (Math.random()-0.5)*WORLD_HALF*2*0.95;
   if(Math.hypot(x,z) < (Math.max(GRID_COLS,GRID_ROWS)*SPACING)/2 + 16) continue;
+  if(tooCloseToRoad(x,z)) continue;
   const t = makeTree();
   t.position.set(x,0,z);
   t.scale.setScalar(0.8+Math.random()*0.9);
@@ -964,8 +1013,13 @@ parkCells.forEach(cell=>{
   pond.rotation.x = -Math.PI/2; pond.position.y = 0.03;
   g.add(pond);
   for(let i=0;i<4;i++){
+    let a, r, x, z, guard=0;
+    do{
+      a = Math.random()*Math.PI*2; r = 6+Math.random()*4;
+      x = cell.x+Math.cos(a)*r; z = cell.z+Math.sin(a)*r;
+      guard++;
+    }while(tooCloseToRoad(x,z) && guard<12);
     const t = makeTree();
-    const a = Math.random()*Math.PI*2, r = 6+Math.random()*4;
     t.position.set(Math.cos(a)*r, 0, Math.sin(a)*r);
     t.scale.setScalar(0.9+Math.random()*0.5);
     g.add(t);
@@ -1265,12 +1319,12 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
   body.position.y = bh/2; body.castShadow=true; body.receiveShadow=true;
   g.add(body);
 
-  const roofParts = [];
+  const roofSurfaces = []; // true roof-facing meshes — these get the roof texture once themed
   if(style===0){
     const roof = new THREE.Mesh(new THREE.ConeGeometry(bw*0.82,3.0,4), roofMat);
     roof.position.y = bh + 1.5; roof.rotation.y = Math.PI/4; roof.castShadow=true;
     g.add(roof);
-    roofParts.push(roof);
+    roofSurfaces.push(roof);
   } else if(style===1){
     const roofRise = 2.3, halfW = bw/2 + 0.5;
     const slope = Math.atan2(roofRise, halfW);
@@ -1281,10 +1335,12 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
     const panelR = new THREE.Mesh(panelGeo, roofMat);
     panelR.position.set(halfW/2, bh+roofRise/2, 0); panelR.rotation.z = -slope; panelR.castShadow=true;
     g.add(panelL, panelR);
-    roofParts.push(panelL, panelR);
+    roofSurfaces.push(panelL, panelR);
 
     // triangular gable-end infill — without this there's an open gap
-    // between the flat wall top and the sloped roof at the front/back
+    // between the flat wall top and the sloped roof at the front/back.
+    // This is a continuation of the WALL, not the roof surface, so it
+    // keeps the wall texture rather than the roof texture once themed.
     const gableMat = new THREE.MeshStandardMaterial({map:toyWallTexture(pal.body), color:0xffffff, roughness:0.75, side:THREE.DoubleSide});
     const gableShape = new THREE.Shape();
     gableShape.moveTo(-bw/2, 0);
@@ -1296,18 +1352,16 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
     gableFront.position.set(0, bh, bd/2);
     gableFront.castShadow = true;
     g.add(gableFront);
-    roofParts.push(gableFront);
     const gableBack = new THREE.Mesh(gableGeo, gableMat);
     gableBack.position.set(0, bh, -bd/2);
     gableBack.rotation.y = Math.PI;
     gableBack.castShadow = true;
     g.add(gableBack);
-    roofParts.push(gableBack);
   } else {
     const cap = new THREE.Mesh(new THREE.BoxGeometry(bw+0.5,0.4,bd+0.5), roofMat);
     cap.position.y = bh+0.2; cap.castShadow = true;
     g.add(cap);
-    roofParts.push(cap);
+    roofSurfaces.push(cap);
     const trim = new THREE.Mesh(new THREE.BoxGeometry(bw+0.5,0.7,0.18), new THREE.MeshStandardMaterial({color:pal.roof}));
     [1,-1].forEach(sz=>{
       const t = trim.clone();
@@ -1323,7 +1377,7 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
   addContactShadow(g, bw*0.72, bd*0.66);
 
   scene.add(g);
-  return { group:g, body, roofParts, bodyWidth:bw, roofY:bh, worldPos:new THREE.Vector3(x,0,z) };
+  return { group:g, body, roofSurfaces, bodyWidth:bw, roofY:bh, worldPos:new THREE.Vector3(x,0,z) };
 }
 
 /* ============================================================
@@ -1362,7 +1416,7 @@ houseCells.forEach((cell, i)=>{
   struct.body.material.emissiveIntensity = 0;
 
   houses.push({
-    group:struct.group, sign, signGlow, post, body:struct.body, roofParts:struct.roofParts, number:null, isCorrect:false, wasReady:false,
+    group:struct.group, sign, signGlow, post, body:struct.body, roofSurfaces:struct.roofSurfaces, number:null, isCorrect:false, wasReady:false,
     worldPos: struct.worldPos, roofY: struct.roofY, bodyWidth: struct.bodyWidth
   });
 });
@@ -1388,7 +1442,7 @@ decoyCells.forEach((cell, i)=>{
   pkgSign.scale.set(6.8,6.8,1);
   struct.group.add(pkgSign);
 
-  decoys.push({ group:struct.group, body:struct.body, roofParts:struct.roofParts, pkgSign, worldPos:struct.worldPos, roofY:struct.roofY, bodyWidth:struct.bodyWidth, isDepot:false });
+  decoys.push({ group:struct.group, body:struct.body, roofSurfaces:struct.roofSurfaces, pkgSign, worldPos:struct.worldPos, roofY:struct.roofY, bodyWidth:struct.bodyWidth, isDepot:false });
 });
 
 /* ============================================================
@@ -2685,9 +2739,10 @@ function updateActionUI(dt){
     if(isRinging){ bodyColor = 0xff4fd6; bodyIntensity = Math.max(bodyIntensity, ringPulse*0.7); }
     h.body.material.emissive.setHex(bodyColor);
     h.body.material.emissiveIntensity = THREE.MathUtils.lerp(h.body.material.emissiveIntensity, bodyIntensity, 0.25);
-    // keep the roof cap and ground-floor facade in sync with the wall so
+    // keep the roof and ground-floor facade in sync with the wall so
     // the whole building glows together, not just the top band
-    [h.roofCap, h.facade].forEach(mesh=>{
+    const glowMeshes = [h.facade, ...(h.roofSurfaces||[])];
+    glowMeshes.forEach(mesh=>{
       if(!mesh) return;
       mesh.material.emissive.setHex(bodyColor);
       mesh.material.emissiveIntensity = THREE.MathUtils.lerp(mesh.material.emissiveIntensity, bodyIntensity, 0.25);
@@ -2852,6 +2907,19 @@ document.getElementById('startBtn').addEventListener('click', ()=>{
    MINIMAP
 ============================================================ */
 const mapCanvas = document.getElementById('mapCanvas');
+const mapWrapEl = document.getElementById('mapWrap');
+const mapToggleBtn = document.getElementById('mapToggleBtn');
+function setMapCollapsed(collapsed){
+  mapWrapEl.classList.toggle('collapsed', collapsed);
+  mapToggleBtn.textContent = collapsed ? '▶' : '◀';
+}
+// on small screens, start with the map rolled away so it doesn't crowd
+// the flight controls — the player can still tap the tab to bring it back
+setMapCollapsed(window.innerWidth < 640);
+mapToggleBtn.addEventListener('click', ()=>{
+  sfxClick();
+  setMapCollapsed(!mapWrapEl.classList.contains('collapsed'));
+});
 const mctx = mapCanvas.getContext('2d');
 const MAP_SIZE = mapCanvas.width;
 const GRID_HALF = (Math.max(GRID_COLS,GRID_ROWS)/2)*SPACING + SPACING*0.6;
@@ -3237,19 +3305,17 @@ function applyThemeToBuilding(entry, img){
   entry.body.material.map = wallTex;
   entry.body.material.needsUpdate = true;
 
-  // roof: the procedural pyramid/gable/flat/dome shapes don't map cleanly
-  // onto a single texture, so hide them and drop in a simple flat cap
-  // textured with the roof band instead — this is also what the drone
-  // actually sees while flying overhead
-  if(entry.roofParts) entry.roofParts.forEach(p=> p.visible = false);
+  // roof: apply the roof-band texture directly onto the real roof shapes
+  // (pyramid / gable panels / flat cap) instead of hiding them, so the
+  // building keeps its distinctive silhouette
   const roofTileH = floorH, roofTileW = roofTileH*textures.roof.aspect;
-  const roofTex = textures.roof.tex.clone();
-  roofTex.repeat.set(Math.max(1,(bw+0.4)/roofTileW), Math.max(1,(bd+0.4)/roofTileH));
-  const roofMat = new THREE.MeshStandardMaterial({map:roofTex, color:0xffffff, roughness:0.8});
-  const roofCap = new THREE.Mesh(new THREE.BoxGeometry(bw+0.4,0.35,bd+0.4), roofMat);
-  roofCap.position.y = bh+0.2; roofCap.castShadow = true;
-  entry.group.add(roofCap);
-  entry.roofCap = roofCap;
+  if(entry.roofSurfaces){
+    entry.roofSurfaces.forEach(part=>{
+      const partTex = textures.roof.tex.clone();
+      partTex.repeat.set(Math.max(1,(bw+0.4)/roofTileW), Math.max(1,(bd+0.4)/roofTileH));
+      part.material = new THREE.MeshStandardMaterial({map:partTex, color:0xffffff, roughness:0.8});
+    });
+  }
 
   // ground-floor facade: no per-building repeat needed (ClampToEdge, whole
   // image across the plane regardless of plane size), so the cached
@@ -3288,6 +3354,45 @@ Promise.all([
       repeatCursor++;
     }
   });
+});
+
+/* ============================================================
+   ROAD / INTERSECTION / GRASS TEXTURES — loaded dynamically from the
+   same subfolder as the building facades
+============================================================ */
+Promise.all([
+  loadThemeImage('multiplication_flyer/road.png'),
+  loadThemeImage('multiplication_flyer/intersection.png'),
+  loadThemeImage('multiplication_flyer/grass.png')
+]).then(([roadImg, intersectionImg, grassImg])=>{
+  if(roadImg){
+    const tex = new THREE.Texture(roadImg);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1, roadSpan/32); // one image repeat ~= 32 world units of dashes
+    tex.needsUpdate = true;
+    roadMat.map = tex;
+    roadMat.color.set(0xffffff);
+    roadMat.needsUpdate = true;
+  }
+  if(intersectionImg){
+    const tex = new THREE.Texture(intersectionImg);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+    intersectionMat.map = tex;
+    intersectionMat.color.set(0xffffff);
+    intersectionMat.needsUpdate = true;
+  }
+  if(grassImg){
+    const tex = new THREE.Texture(grassImg);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    const groundSize = WORLD_HALF*2.6;
+    tex.repeat.set(groundSize/6, groundSize/6); // one image repeat ~= 6 world units
+    tex.needsUpdate = true;
+    groundMat.map = tex;
+    groundMat.needsUpdate = true;
+  }
 });
 
 animate();
