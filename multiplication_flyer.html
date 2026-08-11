@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="apple-touch-icon" href="/multiplication_flyer/icon.png">
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>SkyMath Delivery — Multiplication Drone Game</title>
@@ -779,20 +780,37 @@ function nearestIntersectionAhead(u){
 }
 function updateCars(dt){
   const half = roadSpan/2;
-  const FOLLOW_STOP = 3.6;       // don't get closer than this to the car ahead
-  const INTERSECTION_ZONE = 2.4; // start pausing this far before an intersection
+  const FOLLOW_STOP = 3.6;        // don't get closer than this to the car ahead
+  const CAR_HALF_LEN = 1.3;       // car body is 2.6 long
+  const INTERSECTION_HALF = 3.4;  // intersection tile is 6.2 wide, plus a little margin
+  const STOP_GAP = 0.6;           // extra breathing room before the intersection
+  const STOP_LINE = INTERSECTION_HALF + CAR_HALF_LEN + STOP_GAP; // ~5.3 — where the front bumper should end up
+  const SLOWDOWN_RANGE = 6;       // start easing off this far before the stop line
 
   cars.forEach(car=>{
     const u = car.userData;
 
-    // brief pause at each intersection, once per pass
+    // ease to a stop BEFORE the intersection (not in the middle of it),
+    // pause briefly once stopped, then resume — once per pass
     const ahead = nearestIntersectionAhead(u);
     if(u.lastStopKey!==null && (!ahead || ahead.coord!==u.lastStopKey)) u.lastStopKey = null;
-    if(u.pauseTimer<=0 && ahead && ahead.dist<INTERSECTION_ZONE && u.lastStopKey!==ahead.coord){
-      u.pauseTimer = 0.7+Math.random()*0.6;
-      u.lastStopKey = ahead.coord;
+
+    let intersectionSpeedFactor = 1;
+    if(u.pauseTimer>0){
+      intersectionSpeedFactor = 0;
+      u.pauseTimer -= dt;
+    } else if(ahead && u.lastStopKey!==ahead.coord){
+      if(ahead.dist <= STOP_LINE){
+        // reached the stop line — lock in a full stop here, not creeping
+        // further into the intersection
+        intersectionSpeedFactor = 0;
+        u.pauseTimer = 0.7+Math.random()*0.6;
+        u.lastStopKey = ahead.coord;
+      } else if(ahead.dist < STOP_LINE+SLOWDOWN_RANGE){
+        // smoothly ease off as the stop line approaches
+        intersectionSpeedFactor = THREE.MathUtils.clamp((ahead.dist-STOP_LINE)/SLOWDOWN_RANGE, 0.12, 1);
+      }
     }
-    if(u.pauseTimer>0) u.pauseTimer -= dt;
 
     // don't run into the car ahead on the same road & direction
     let blocked = false;
@@ -804,7 +822,7 @@ function updateCars(dt){
       if(aheadDist>0 && aheadDist<FOLLOW_STOP){ blocked = true; break; }
     }
 
-    const targetSpeed = (u.pauseTimer>0 || blocked) ? 0 : u.speed;
+    const targetSpeed = blocked ? 0 : u.speed*intersectionSpeedFactor;
     u.currentSpeed = THREE.MathUtils.lerp(u.currentSpeed, targetSpeed, 1-Math.pow(0.0008,dt));
 
     u.t += u.dir*u.currentSpeed*dt;
@@ -1447,8 +1465,8 @@ houseCells.forEach((cell, i)=>{
   const struct = buildStructure(cell.x, cell.z, i, true);
 
   // number sign floats above the roof — no pole connecting it to the house.
-  // Positioned to clear the tallest roof style (pyramid, ~roofY+3.0)
-  const signY = struct.roofY + 3.6;
+  // Positioned with extra clearance above the tallest roof style (pyramid)
+  const signY = struct.roofY + 4.4;
   const sign = new THREE.Sprite(new THREE.SpriteMaterial({transparent:true, opacity:1, depthTest:true}));
   sign.position.set(0, signY, 0);
   sign.scale.set(4.2,4.2,1);
@@ -1463,11 +1481,19 @@ houseCells.forEach((cell, i)=>{
   signGlow.visible = false;
   struct.group.add(signGlow);
 
-  struct.body.material.emissive = new THREE.Color(0x000000);
-  struct.body.material.emissiveIntensity = 0;
+  // glowing ring on the ground — yellow/green as the drone approaches to
+  // deliver, pink during a phone-ring hint
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(6.4, 7.9, 40),
+    new THREE.MeshBasicMaterial({color:0xffe74c, transparent:true, opacity:0, side:THREE.DoubleSide})
+  );
+  ring.rotation.x = -Math.PI/2;
+  ring.position.set(0, 0.06, 0);
+  ring.visible = false;
+  struct.group.add(ring);
 
   houses.push({
-    group:struct.group, sign, signGlow, body:struct.body, roofSurfaces:struct.roofSurfaces, number:null, isCorrect:false, wasReady:false,
+    group:struct.group, sign, signGlow, ring, body:struct.body, roofSurfaces:struct.roofSurfaces, number:null, isCorrect:false, wasReady:false,
     worldPos: struct.worldPos, roofY: struct.roofY, bodyWidth: struct.bodyWidth
   });
 });
@@ -2761,9 +2787,9 @@ function resolveDelivery(idx, correct){
 ============================================================ */
 function updateActionUI(dt){
   let anyReady = false;
-  let dimTarget = 0;
   houses.forEach((h,i)=>{
     h.sign.visible = state.carrying;
+    h.ring.visible = state.carrying;
 
     let target = 0;
     if(state.carrying && !state.delivering){
@@ -2776,27 +2802,26 @@ function updateActionUI(dt){
     if(inAction) anyReady = true;
 
     const isRinging = state.called && i===state.correctHouseIdx;
-    dimTarget = Math.max(dimTarget, target, isRinging ? 1 : 0);
 
-    // the building itself and its number sign light up when close enough
-    // to deliver (yellow -> green), or pink while that house's phone is
-    // ringing — instead of a ring glowing on the ground
-    const pulse = inAction ? (0.6+0.4*Math.sin(performance.now()/140)) : target*0.3;
-    const ringPulse = isRinging ? (0.6+0.4*Math.sin(performance.now()/180)) : 0;
+    // glowing ring on the ground — green as the drone approaches to
+    // deliver (visible across the full approach range, not just right on
+    // top of it), pink during a phone-ring hint
+    const pulse = inAction ? (0.75+0.25*Math.sin(performance.now()/140)) : target*0.6;
+    const ringPulse = isRinging ? (0.75+0.25*Math.sin(performance.now()/180)) : 0;
+    let ringOpacity = 0, ringColor = 0x4fbf5f;
+    if(isRinging){ ringOpacity = ringPulse; ringColor = 0xff4fd6; }
+    else if(target>0){ ringOpacity = pulse; }
+    h.ring.material.opacity = THREE.MathUtils.lerp(h.ring.material.opacity, ringOpacity, 0.25);
+    h.ring.material.color.set(ringColor);
+    const ringScale = (inAction || isRinging) ? 1.15 : 1.0;
+    h.ring.scale.setScalar(THREE.MathUtils.lerp(h.ring.scale.x, ringScale, 0.2));
 
-    let bodyColor = 0xffe74c, bodyIntensity = target*0.18;
-    if(inAction){ bodyColor = 0x4fbf5f; bodyIntensity = pulse*0.7; }
-    if(isRinging){ bodyColor = 0xff4fd6; bodyIntensity = Math.max(bodyIntensity, ringPulse*0.7); }
-    h.body.material.emissive.setHex(bodyColor);
-    h.body.material.emissiveIntensity = THREE.MathUtils.lerp(h.body.material.emissiveIntensity, bodyIntensity, 0.25);
-    // keep the roof and ground-floor facade in sync with the wall so
-    // the whole building glows together, not just the top band
-    const glowMeshes = [h.facade, ...(h.roofSurfaces||[])];
-    glowMeshes.forEach(mesh=>{
-      if(!mesh) return;
-      mesh.material.emissive.setHex(bodyColor);
-      mesh.material.emissiveIntensity = THREE.MathUtils.lerp(mesh.material.emissiveIntensity, bodyIntensity, 0.25);
-    });
+    // the number sign itself tints to match — green when deliverable,
+    // pink during the phone-ring hint
+    let signTint = 0xffffff;
+    if(isRinging) signTint = 0xff8fd6;
+    else if(inAction) signTint = 0x8ef2a0;
+    h.sign.material.color.set(signTint);
 
     const signScale = (inAction || isRinging) ? 4.6+0.3*Math.sin(performance.now()/150) : 4.2;
     h.sign.scale.set(signScale, signScale, 1);
@@ -2805,8 +2830,6 @@ function updateActionUI(dt){
     const glowOpacity = isRinging ? (0.5+ringPulse*0.5) : (inAction ? (0.5+pulse*0.5) : target*0.45);
     h.signGlow.material.opacity = THREE.MathUtils.lerp(h.signGlow.material.opacity, glowOpacity, 0.25);
   });
-
-  updateCityDim(dt, dimTarget);
 
   // action button label / gentle "ready" pulse
   let ready = false;
