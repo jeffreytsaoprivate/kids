@@ -299,9 +299,7 @@
     <button class="tbtn music-btn" data-style="cyberpunk">Funky</button>
     <button class="tbtn music-btn" data-style="retro">Retro</button>
     <button class="tbtn music-btn" data-style="classical">Ode to Joy</button>
-    <button class="tbtn music-btn" data-style="mountainking">Mountain King</button>
     <button class="tbtn music-btn active" data-style="rondoturca">Rondo Alla Turca</button>
-    <button class="tbtn music-btn" data-style="spring">Vivaldi Spring</button>
   </div>
   <h3 style="margin-top:8px;">🔊 Audio</h3>
   <div style="display:flex; gap:6px;">
@@ -2346,21 +2344,6 @@ const ODE_TO_JOY = [
   [C4,1],[C4,1],[D4,1],[E4,1], [D4,1.5],[C4,0.5],[C4,2]
 ];
 
-// Grieg — "In the Hall of the Mountain King" (Peer Gynt) — the famous
-// creeping, chromatic-feeling up-and-down motif, repeated faster each time
-const A3=220.00, B3=246.94, MC4=261.63, MD4=293.66;
-const A4=440.00, B4=493.88;
-const MC5=523.25, MD5=587.33;
-const MOUNTAIN_KING = [
-  // the famous frenzied, full-throttle climax — same 8-note figure as the
-  // rest of the piece, but fast and doubled up an octave for a bigger,
-  // louder finale feel
-  [A3,0.28],[B3,0.28],[MC4,0.28],[MD4,0.28], [MC4,0.28],[B3,0.28],[A3,0.28],[G3,0.28],
-  [A4,0.28],[B4,0.28],[MC5,0.28],[MD5,0.28], [MC5,0.28],[B4,0.28],[A4,0.28],[G4,0.28],
-  [A3,0.28],[B3,0.28],[MC4,0.28],[MD4,0.28], [MC4,0.28],[B3,0.28],[A3,0.28],[G3,0.28],
-  [A4,0.28],[B4,0.28],[MC5,0.28],[MD5,0.28], [MC5,0.28],[B4,0.28],[A4,0.28],[G4,0.28]
-];
-
 // Mozart — "Rondo Alla Turca" (Piano Sonata No. 11) — the bouncy, playful
 // "Turkish March" opening figure
 const GS4=415.30, TA4=440.00, TB4=493.88, TC5=523.25, TD5=587.33, TE4=329.63;
@@ -2371,25 +2354,10 @@ const RONDO_ALLA_TURCA = [
   [TC5,0.5],[TB4,0.5],[TA4,0.5],[GS4,0.5], [TA4,1],[TE4,1]
 ];
 
-// Vivaldi — "Spring" (The Four Seasons) — the bright, birdsong-like
-// repeated-note opening ritornello
-const FS5=739.99, GS5=830.61, VA5=880.00, VE5=659.25;
-const SPRING = [
-  // the bright, festive opening ritornello — this is the theme's most
-  // recognizable recurring "refrain," played here a bit fuller/bigger
-  [VE5,0.5],[VE5,0.5],[VE5,0.5],[0,0.5],
-  [FS5,0.5],[GS5,0.5],[VA5,0.5],[GS5,0.5],[FS5,0.5],[VE5,1],
-  [VE5,0.5],[VE5,0.5],[VE5,0.5],[0,0.5],
-  [FS5,0.5],[GS5,0.5],[VA5,0.5],[GS5,0.5],[FS5,0.5],[VE5,1],
-  [VE5,0.5],[VE5,0.5],[VE5,0.5],[0,0.5],
-  [FS5,0.5],[GS5,0.5],[VA5,0.5],[GS5,0.5],[FS5,0.5],[VE5,1]
-];
 
 const CLASSICAL_MELODIES = {
   classical:    { label:'Ode to Joy',        bpm:78,  notes:ODE_TO_JOY,        chordRoots:[130.81,130.81,196.00,130.81], articulation:'legato',   gainMul:1 },
-  mountainking: { label:'Mountain King',     bpm:150, notes:MOUNTAIN_KING,     chordRoots:[220.00,220.00,196.00,220.00], articulation:'staccato', gainMul:1.35 },
   rondoturca:   { label:'Rondo Alla Turca',  bpm:150, notes:RONDO_ALLA_TURCA,  chordRoots:[220.00,220.00,164.81,220.00], articulation:'staccato', gainMul:1 },
-  spring:       { label:'Vivaldi Spring',    bpm:118, notes:SPRING,            chordRoots:[329.63,329.63,246.94,329.63], articulation:'legato',   gainMul:1.25 }
 };
 
 function scheduleClassicalPhrase(){
