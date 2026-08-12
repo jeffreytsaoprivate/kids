@@ -4,7 +4,7 @@
 <link rel="apple-touch-icon" href="multiplication_flyer/icon.png">
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<title>SkyMath Delivery — Multiplication Drone Game</title>
+<title>SkyMath Delivery</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -297,10 +297,11 @@
   <h3 style="margin-top:8px;">🎵 Music style</h3>
   <div id="musicGrid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px;">
     <button class="tbtn music-btn active" data-style="cyberpunk">Funky</button>
-    <button class="tbtn music-btn" data-style="adventure">Adventure</button>
-    <button class="tbtn music-btn" data-style="chill">Chill</button>
     <button class="tbtn music-btn" data-style="retro">Retro</button>
-    <button class="tbtn music-btn" data-style="classical" style="grid-column:span 2;">Classical</button>
+    <button class="tbtn music-btn" data-style="classical">Ode to Joy</button>
+    <button class="tbtn music-btn" data-style="mountainking">Mountain King</button>
+    <button class="tbtn music-btn" data-style="rondoturca">Rondo Alla Turca</button>
+    <button class="tbtn music-btn" data-style="spring">Vivaldi Spring</button>
   </div>
   <h3 style="margin-top:8px;">🔊 Audio</h3>
   <div style="display:flex; gap:6px;">
@@ -1396,13 +1397,19 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
 
   const style = palIdx % 3; // 0 = pyramid, 1 = gable, 2 = flat
   const bw = 7.4+Math.random()*1.4, bh=(4.0+Math.random()*1.2)*heightMult, bd=6.6;
-  const roofMat = new THREE.MeshStandardMaterial({map:toyRoofTexture(pal.roof), color:0xffffff, roughness:0.55});
-  const wallMat = new THREE.MeshStandardMaterial({map:toyWallTexture(pal.body), color:0xffffff, roughness:0.75});
+  // plain flat-color placeholders — every building ends up with a themed
+  // photo texture applied once the images load (see applyThemeToBuilding),
+  // so generating a full procedural canvas texture here would just be
+  // thrown away; a solid color is far cheaper and looks identical in the
+  // brief moment before the real texture arrives
+  const roofMat = new THREE.MeshStandardMaterial({color:pal.roof, roughness:0.55});
+  const wallMat = new THREE.MeshStandardMaterial({color:pal.body, roughness:0.75});
   const body = new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd), wallMat);
   body.position.y = bh/2; body.castShadow=true; body.receiveShadow=true;
   g.add(body);
 
   const roofSurfaces = []; // true roof-facing meshes — these get the roof texture once themed
+  const wallSurfaces = [];  // extra wall-facing meshes (beyond the main body) — these get the wall texture once themed
   if(style===0){
     const roof = new THREE.Mesh(new THREE.ConeGeometry(bw*0.82,3.0,4), roofMat);
     roof.position.y = bh + 1.5; roof.rotation.y = Math.PI/4; roof.castShadow=true;
@@ -1424,7 +1431,7 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
     // between the flat wall top and the sloped roof at the front/back.
     // This is a continuation of the WALL, not the roof surface, so it
     // keeps the wall texture rather than the roof texture once themed.
-    const gableMat = new THREE.MeshStandardMaterial({map:toyWallTexture(pal.body), color:0xffffff, roughness:0.75, side:THREE.DoubleSide});
+    const gableMat = new THREE.MeshStandardMaterial({color:pal.body, roughness:0.75, side:THREE.DoubleSide});
     const gableShape = new THREE.Shape();
     gableShape.moveTo(-bw/2, 0);
     gableShape.lineTo(bw/2, 0);
@@ -1435,11 +1442,13 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
     gableFront.position.set(0, bh, bd/2);
     gableFront.castShadow = true;
     g.add(gableFront);
+    wallSurfaces.push(gableFront);
     const gableBack = new THREE.Mesh(gableGeo, gableMat);
     gableBack.position.set(0, bh, -bd/2);
     gableBack.rotation.y = Math.PI;
     gableBack.castShadow = true;
     g.add(gableBack);
+    wallSurfaces.push(gableBack);
   } else {
     const cap = new THREE.Mesh(new THREE.BoxGeometry(bw+0.5,0.4,bd+0.5), roofMat);
     cap.position.y = bh+0.2; cap.castShadow = true;
@@ -1454,7 +1463,7 @@ function buildStructure(x, z, palIdx, facesCenter, heightMult=1){
   addContactShadow(g, bw*0.72, bd*0.66);
 
   scene.add(g);
-  return { group:g, body, roofSurfaces, bodyWidth:bw, roofY:bh, worldPos:new THREE.Vector3(x,0,z) };
+  return { group:g, body, roofSurfaces, wallSurfaces, bodyWidth:bw, roofY:bh, worldPos:new THREE.Vector3(x,0,z) };
 }
 
 /* ============================================================
@@ -1493,7 +1502,7 @@ houseCells.forEach((cell, i)=>{
   struct.group.add(ring);
 
   houses.push({
-    group:struct.group, sign, signGlow, ring, body:struct.body, roofSurfaces:struct.roofSurfaces, number:null, isCorrect:false, wasReady:false,
+    group:struct.group, sign, signGlow, ring, body:struct.body, roofSurfaces:struct.roofSurfaces, wallSurfaces:struct.wallSurfaces, number:null, isCorrect:false, wasReady:false,
     worldPos: struct.worldPos, roofY: struct.roofY, bodyWidth: struct.bodyWidth
   });
 });
@@ -1519,7 +1528,7 @@ decoyCells.forEach((cell, i)=>{
   pkgSign.scale.set(6.8,6.8,1);
   struct.group.add(pkgSign);
 
-  decoys.push({ group:struct.group, body:struct.body, roofSurfaces:struct.roofSurfaces, pkgSign, worldPos:struct.worldPos, roofY:struct.roofY, bodyWidth:struct.bodyWidth, isDepot:false });
+  decoys.push({ group:struct.group, body:struct.body, roofSurfaces:struct.roofSurfaces, wallSurfaces:struct.wallSurfaces, pkgSign, worldPos:struct.worldPos, roofY:struct.roofY, bodyWidth:struct.bodyWidth, isDepot:false });
 });
 
 /* ============================================================
@@ -2149,9 +2158,9 @@ function updateEngineAudio(speedFrac){
   if(!audioReady) return;
   const t = actx.currentTime;
   const silent = audioMuted || !sfxEnabled;
-  const idle = 0.028, active = 0.09;
+  const idle = 0.014, active = 0.045;
   const toneTarget = silent ? 0.0001 : (idle + (active-idle)*speedFrac);
-  const noiseTarget = silent ? 0.0001 : (0.012 + 0.05*speedFrac);
+  const noiseTarget = silent ? 0.0001 : (0.006 + 0.025*speedFrac);
   engineToneGain.gain.setTargetAtTime(toneTarget, t, 0.15);
   engineNoiseGain.gain.setTargetAtTime(noiseTarget, t, 0.15);
   engineOsc1.frequency.setTargetAtTime(66 + speedFrac*40, t, 0.2);
@@ -2160,7 +2169,7 @@ function updateEngineAudio(speedFrac){
 
   // wind swells non-linearly with speed so higher speeds feel noticeably windier
   const windCurve = Math.pow(speedFrac, 1.6);
-  const windTarget = silent ? 0.0001 : windCurve*0.16;
+  const windTarget = silent ? 0.0001 : windCurve*0.08;
   windGain.gain.setTargetAtTime(windTarget, t, 0.12);
   windFilter.frequency.setTargetAtTime(1300 + speedFrac*1800, t, 0.2);
 }
@@ -2271,7 +2280,7 @@ function sfxCall(){ beep(880,0.16,'sine',0.2,0); beep(740,0.16,'sine',0.2,0.2); 
 function sfxThud(){ beep(90,0.14,'sine',0.22,0); noiseBurst(0.08,0.12,500); }
 function sfxChimeNear(){ beep(980,0.09,'sine',0.1,0); }
 function sfxChimeReady(){ beep(880,0.08,'triangle',0.14,0); beep(1180,0.12,'triangle',0.14,0.06); }
-function sfxSwish(){ noiseBurst(0.4, 0.16, 2600, 0, 'bandpass', 1.3); noiseBurst(0.3, 0.08, 4200, 0.03, 'bandpass', 1.6); }
+function sfxSwish(){ noiseBurst(0.4, 0.08, 2600, 0, 'bandpass', 1.3); noiseBurst(0.3, 0.04, 4200, 0.03, 'bandpass', 1.6); }
 function sfxWinch(durationSec, windingIn){
   const tickGap = 0.09;
   const ticks = Math.max(1, Math.floor(durationSec/tickGap));
@@ -2279,8 +2288,8 @@ function sfxWinch(durationSec, windingIn){
     const t = i*tickGap;
     const prog = i/ticks;
     const freq = windingIn ? (480+prog*260) : (740-prog*260);
-    beep(freq, 0.06, 'square', 0.045, t);
-    noiseBurst(0.025, 0.035, 3400, t, 'highpass', 2);
+    beep(freq, 0.06, 'square', 0.028, t);
+    noiseBurst(0.025, 0.02, 3400, t, 'highpass', 2);
   }
 }
 function sfxBirdCollision(){
@@ -2299,20 +2308,6 @@ function sfxLevelUp(){
 
 /* ---------- procedural background music (looping, all synthesized) ---------- */
 const MUSIC_STYLES = {
-  adventure: {
-    label:'Adventure', bpm:132,
-    chords:[130.81,196.00,220.00,174.61],           // C - G - Am - F
-    scale:[261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.25,783.99,880.00],
-    riffs:[[4,2,0,2,4,7,5,4],[0,2,4,5,4,2,0,2],[7,5,4,2,0,2,4,5],[4,4,2,0,2,2,4,7]],
-    bassWave:'triangle', leadWave:'square', kickSteps:[0,4,8,12], hatEvery:2
-  },
-  chill: {
-    label:'Chill', bpm:92,
-    chords:[130.81,174.61,196.00,220.00],           // C - F - G - Am
-    scale:[261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.25],
-    riffs:[[0,2,4,2],[4,2,0,2],[2,4,5,4],[0,4,2,4]],
-    bassWave:'sine', leadWave:'triangle', kickSteps:[0,8], hatEvery:4
-  },
   retro: {
     label:'Retro', bpm:150,
     chords:[130.81,196.00,146.83,174.61],           // C - G - D - F
@@ -2333,9 +2328,9 @@ let musicBarCount = 0;
 let musicStarted = false;
 let musicTimeoutId = null;
 
-/* ---------- Classical: a mellow rendition of Beethoven's "Ode to Joy"
-   (Symphony No. 9, public domain) — melody with a soft sustained pad,
-   played as a slow, gentle looping phrase rather than a bar-based riff ---------- */
+/* ---------- Classical: simplified public-domain melodies, each played as
+   a slow (or brisk, for the livelier ones) looping phrase with a soft
+   sustained bass pad rather than a bar-based riff ---------- */
 const C4=261.63, D4=293.66, E4=329.63, F4=349.23, G4=392.00, G3=196.00;
 const ODE_TO_JOY = [
   [E4,1],[E4,1],[F4,1],[G4,1], [G4,1],[F4,1],[E4,1],[D4,1],
@@ -2350,25 +2345,67 @@ const ODE_TO_JOY = [
   [E4,1],[E4,1],[F4,1],[G4,1], [G4,1],[F4,1],[E4,1],[D4,1],
   [C4,1],[C4,1],[D4,1],[E4,1], [D4,1.5],[C4,0.5],[C4,2]
 ];
-const CLASSICAL_BPM = 78;
-const CLASSICAL_CHORD_ROOTS = [130.81,130.81,196.00,130.81]; // C - C - G - C bass, soft
+
+// Grieg — "In the Hall of the Mountain King" (Peer Gynt) — the famous
+// creeping, chromatic-feeling up-and-down motif, repeated faster each time
+const A3=220.00, B3=246.94, MC4=261.63, MD4=293.66;
+const MOUNTAIN_KING = [
+  [A3,1],[B3,1],[MC4,1],[MD4,1], [MC4,1],[B3,1],[A3,1],[G3,1],
+  [A3,1],[B3,1],[MC4,1],[MD4,1], [MC4,1],[B3,1],[A3,1],[G3,1],
+  [A3,0.5],[B3,0.5],[MC4,0.5],[MD4,0.5], [MC4,0.5],[B3,0.5],[A3,0.5],[G3,0.5],
+  [A3,0.5],[B3,0.5],[MC4,0.5],[MD4,0.5], [MC4,0.5],[B3,0.5],[A3,0.5],[G3,0.5],
+  [A3,0.35],[B3,0.35],[MC4,0.35],[MD4,0.35], [MC4,0.35],[B3,0.35],[A3,0.35],[G3,0.35]
+];
+
+// Mozart — "Rondo Alla Turca" (Piano Sonata No. 11) — the bouncy, playful
+// "Turkish March" opening figure
+const GS4=415.30, TA4=440.00, TB4=493.88, TC5=523.25, TD5=587.33, TE4=329.63;
+const RONDO_ALLA_TURCA = [
+  [TB4,0.5],[TC5,0.5],[TD5,0.5],[TC5,0.5], [TB4,0.5],[TA4,0.5],[GS4,0.5],[TA4,0.5],
+  [TB4,0.5],[TC5,0.5],[TD5,0.5],[TC5,0.5], [TB4,0.5],[TA4,0.5],[GS4,0.5],[TA4,0.5],
+  [TC5,0.5],[TB4,0.5],[TA4,0.5],[GS4,0.5], [TA4,1],[TE4,1],
+  [TC5,0.5],[TB4,0.5],[TA4,0.5],[GS4,0.5], [TA4,1],[TE4,1]
+];
+
+// Vivaldi — "Spring" (The Four Seasons) — the bright, birdsong-like
+// repeated-note opening ritornello
+const FS5=739.99, GS5=830.61, VA5=880.00, VE5=659.25;
+const SPRING = [
+  [VE5,0.5],[VE5,0.5],[VE5,0.5],[0,0.5],
+  [FS5,0.5],[GS5,0.5],[VA5,0.5],[GS5,0.5],[FS5,0.5],[VE5,1],
+  [VE5,0.5],[VE5,0.5],[VE5,0.5],[0,0.5],
+  [FS5,0.5],[GS5,0.5],[VA5,0.5],[GS5,0.5],[FS5,0.5],[VE5,1]
+];
+
+const CLASSICAL_MELODIES = {
+  classical:    { label:'Ode to Joy',        bpm:78,  notes:ODE_TO_JOY,        chordRoots:[130.81,130.81,196.00,130.81], articulation:'legato' },
+  mountainking: { label:'Mountain King',     bpm:104, notes:MOUNTAIN_KING,     chordRoots:[220.00,220.00,196.00,220.00], articulation:'staccato' },
+  rondoturca:   { label:'Rondo Alla Turca',  bpm:150, notes:RONDO_ALLA_TURCA,  chordRoots:[220.00,220.00,164.81,220.00], articulation:'staccato' },
+  spring:       { label:'Vivaldi Spring',    bpm:118, notes:SPRING,            chordRoots:[329.63,329.63,246.94,329.63], articulation:'legato' }
+};
 
 function scheduleClassicalPhrase(){
-  const beatSec = 60/CLASSICAL_BPM;
+  const melody = CLASSICAL_MELODIES[musicStyleKey] || CLASSICAL_MELODIES.classical;
+  const beatSec = 60/melody.bpm;
   let t = 0;
-  ODE_TO_JOY.forEach(([freq, beats])=>{
+  melody.notes.forEach(([freq, beats])=>{
     if(freq){
-      // slight overlap into the next note plus a held (non-decaying)
-      // sustain gives a continuous, legato feel instead of separate blips
-      beepSustain(freq, beats*beatSec*1.12, 'sine', 0.1, t, 'music');
-      beepSustain(freq*1.004, beats*beatSec*1.1, 'triangle', 0.045, t, 'music'); // gentle chorus/warmth
+      if(melody.articulation==='staccato'){
+        // short, punchy notes for the livelier/playful pieces
+        beep(freq, beats*beatSec*0.55, 'triangle', 0.13, t, 'music');
+      } else {
+        // slight overlap into the next note plus a held (non-decaying)
+        // sustain gives a continuous, legato feel instead of separate blips
+        beepSustain(freq, beats*beatSec*1.12, 'sine', 0.1, t, 'music');
+        beepSustain(freq*1.004, beats*beatSec*1.1, 'triangle', 0.045, t, 'music'); // gentle chorus/warmth
+      }
     }
     t += beats*beatSec;
   });
-  const totalBeats = ODE_TO_JOY.reduce((s,[,b])=>s+b, 0);
+  const totalBeats = melody.notes.reduce((s,[,b])=>s+b, 0);
   const padCount = Math.ceil(totalBeats/4);
   for(let i=0;i<padCount;i++){
-    const root = CLASSICAL_CHORD_ROOTS[i % CLASSICAL_CHORD_ROOTS.length];
+    const root = melody.chordRoots[i % melody.chordRoots.length];
     beepSustain(root, 4*beatSec*1.05, 'sine', 0.032, i*4*beatSec, 'music');
   }
   musicTimeoutId = setTimeout(scheduleMusicBar, totalBeats*beatSec*1000);
@@ -2376,7 +2413,7 @@ function scheduleClassicalPhrase(){
 
 function scheduleMusicBar(){
   if(!musicStarted) return;
-  if(musicStyleKey === 'classical'){ scheduleClassicalPhrase(); return; }
+  if(CLASSICAL_MELODIES[musicStyleKey]){ scheduleClassicalPhrase(); return; }
   const style = MUSIC_STYLES[musicStyleKey];
   if(!style){ musicTimeoutId = setTimeout(scheduleMusicBar, 600); return; }
   const barStep = 60/style.bpm/4;
@@ -3377,6 +3414,16 @@ function applyThemeToBuilding(entry, img){
   wallTex.repeat.set(Math.max(1,bw/wallTileW), Math.max(1,bh/wallTileH));
   entry.body.material.map = wallTex;
   entry.body.material.needsUpdate = true;
+
+  // extra wall-facing surfaces (e.g. the triangular gable-end infill under
+  // a sloped roof) get the same wall texture, tiled to their own size
+  if(entry.wallSurfaces){
+    entry.wallSurfaces.forEach(part=>{
+      const partTex = textures.wall.tex.clone();
+      partTex.repeat.set(Math.max(1,bw/wallTileW), Math.max(1,bh/wallTileH));
+      part.material = new THREE.MeshStandardMaterial({map:partTex, color:0xffffff, roughness:0.75, side:THREE.DoubleSide});
+    });
+  }
 
   // roof: apply the roof-band texture directly onto the real roof shapes
   // (pyramid / gable panels / flat cap) instead of hiding them, so the
