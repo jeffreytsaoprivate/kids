@@ -296,11 +296,11 @@
   <div id="settingsHint">Pick a single number to practice, or tap "All numbers". New deliveries will use your choice.</div>
   <h3 style="margin-top:8px;">🎵 Music style</h3>
   <div id="musicGrid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px;">
-    <button class="tbtn music-btn active" data-style="cyberpunk">Funky</button>
+    <button class="tbtn music-btn" data-style="cyberpunk">Funky</button>
     <button class="tbtn music-btn" data-style="retro">Retro</button>
     <button class="tbtn music-btn" data-style="classical">Ode to Joy</button>
     <button class="tbtn music-btn" data-style="mountainking">Mountain King</button>
-    <button class="tbtn music-btn" data-style="rondoturca">Rondo Alla Turca</button>
+    <button class="tbtn music-btn active" data-style="rondoturca">Rondo Alla Turca</button>
     <button class="tbtn music-btn" data-style="spring">Vivaldi Spring</button>
   </div>
   <h3 style="margin-top:8px;">🔊 Audio</h3>
@@ -2323,7 +2323,7 @@ const MUSIC_STYLES = {
     bassWave:'sawtooth', leadWave:'sawtooth', kickSteps:[0,8], hatEvery:2, pad:true
   }
 };
-let musicStyleKey = 'cyberpunk';
+let musicStyleKey = 'rondoturca';
 let musicBarCount = 0;
 let musicStarted = false;
 let musicTimeoutId = null;
@@ -2349,12 +2349,16 @@ const ODE_TO_JOY = [
 // Grieg — "In the Hall of the Mountain King" (Peer Gynt) — the famous
 // creeping, chromatic-feeling up-and-down motif, repeated faster each time
 const A3=220.00, B3=246.94, MC4=261.63, MD4=293.66;
+const A4=440.00, B4=493.88;
+const MC5=523.25, MD5=587.33;
 const MOUNTAIN_KING = [
-  [A3,1],[B3,1],[MC4,1],[MD4,1], [MC4,1],[B3,1],[A3,1],[G3,1],
-  [A3,1],[B3,1],[MC4,1],[MD4,1], [MC4,1],[B3,1],[A3,1],[G3,1],
-  [A3,0.5],[B3,0.5],[MC4,0.5],[MD4,0.5], [MC4,0.5],[B3,0.5],[A3,0.5],[G3,0.5],
-  [A3,0.5],[B3,0.5],[MC4,0.5],[MD4,0.5], [MC4,0.5],[B3,0.5],[A3,0.5],[G3,0.5],
-  [A3,0.35],[B3,0.35],[MC4,0.35],[MD4,0.35], [MC4,0.35],[B3,0.35],[A3,0.35],[G3,0.35]
+  // the famous frenzied, full-throttle climax — same 8-note figure as the
+  // rest of the piece, but fast and doubled up an octave for a bigger,
+  // louder finale feel
+  [A3,0.28],[B3,0.28],[MC4,0.28],[MD4,0.28], [MC4,0.28],[B3,0.28],[A3,0.28],[G3,0.28],
+  [A4,0.28],[B4,0.28],[MC5,0.28],[MD5,0.28], [MC5,0.28],[B4,0.28],[A4,0.28],[G4,0.28],
+  [A3,0.28],[B3,0.28],[MC4,0.28],[MD4,0.28], [MC4,0.28],[B3,0.28],[A3,0.28],[G3,0.28],
+  [A4,0.28],[B4,0.28],[MC5,0.28],[MD5,0.28], [MC5,0.28],[B4,0.28],[A4,0.28],[G4,0.28]
 ];
 
 // Mozart — "Rondo Alla Turca" (Piano Sonata No. 11) — the bouncy, playful
@@ -2371,6 +2375,10 @@ const RONDO_ALLA_TURCA = [
 // repeated-note opening ritornello
 const FS5=739.99, GS5=830.61, VA5=880.00, VE5=659.25;
 const SPRING = [
+  // the bright, festive opening ritornello — this is the theme's most
+  // recognizable recurring "refrain," played here a bit fuller/bigger
+  [VE5,0.5],[VE5,0.5],[VE5,0.5],[0,0.5],
+  [FS5,0.5],[GS5,0.5],[VA5,0.5],[GS5,0.5],[FS5,0.5],[VE5,1],
   [VE5,0.5],[VE5,0.5],[VE5,0.5],[0,0.5],
   [FS5,0.5],[GS5,0.5],[VA5,0.5],[GS5,0.5],[FS5,0.5],[VE5,1],
   [VE5,0.5],[VE5,0.5],[VE5,0.5],[0,0.5],
@@ -2378,26 +2386,27 @@ const SPRING = [
 ];
 
 const CLASSICAL_MELODIES = {
-  classical:    { label:'Ode to Joy',        bpm:78,  notes:ODE_TO_JOY,        chordRoots:[130.81,130.81,196.00,130.81], articulation:'legato' },
-  mountainking: { label:'Mountain King',     bpm:104, notes:MOUNTAIN_KING,     chordRoots:[220.00,220.00,196.00,220.00], articulation:'staccato' },
-  rondoturca:   { label:'Rondo Alla Turca',  bpm:150, notes:RONDO_ALLA_TURCA,  chordRoots:[220.00,220.00,164.81,220.00], articulation:'staccato' },
-  spring:       { label:'Vivaldi Spring',    bpm:118, notes:SPRING,            chordRoots:[329.63,329.63,246.94,329.63], articulation:'legato' }
+  classical:    { label:'Ode to Joy',        bpm:78,  notes:ODE_TO_JOY,        chordRoots:[130.81,130.81,196.00,130.81], articulation:'legato',   gainMul:1 },
+  mountainking: { label:'Mountain King',     bpm:150, notes:MOUNTAIN_KING,     chordRoots:[220.00,220.00,196.00,220.00], articulation:'staccato', gainMul:1.35 },
+  rondoturca:   { label:'Rondo Alla Turca',  bpm:150, notes:RONDO_ALLA_TURCA,  chordRoots:[220.00,220.00,164.81,220.00], articulation:'staccato', gainMul:1 },
+  spring:       { label:'Vivaldi Spring',    bpm:118, notes:SPRING,            chordRoots:[329.63,329.63,246.94,329.63], articulation:'legato',   gainMul:1.25 }
 };
 
 function scheduleClassicalPhrase(){
   const melody = CLASSICAL_MELODIES[musicStyleKey] || CLASSICAL_MELODIES.classical;
   const beatSec = 60/melody.bpm;
+  const gm = melody.gainMul || 1;
   let t = 0;
   melody.notes.forEach(([freq, beats])=>{
     if(freq){
       if(melody.articulation==='staccato'){
         // short, punchy notes for the livelier/playful pieces
-        beep(freq, beats*beatSec*0.55, 'triangle', 0.13, t, 'music');
+        beep(freq, beats*beatSec*0.55, 'triangle', 0.13*gm, t, 'music');
       } else {
         // slight overlap into the next note plus a held (non-decaying)
         // sustain gives a continuous, legato feel instead of separate blips
-        beepSustain(freq, beats*beatSec*1.12, 'sine', 0.1, t, 'music');
-        beepSustain(freq*1.004, beats*beatSec*1.1, 'triangle', 0.045, t, 'music'); // gentle chorus/warmth
+        beepSustain(freq, beats*beatSec*1.12, 'sine', 0.1*gm, t, 'music');
+        beepSustain(freq*1.004, beats*beatSec*1.1, 'triangle', 0.045*gm, t, 'music'); // gentle chorus/warmth
       }
     }
     t += beats*beatSec;
@@ -2406,7 +2415,7 @@ function scheduleClassicalPhrase(){
   const padCount = Math.ceil(totalBeats/4);
   for(let i=0;i<padCount;i++){
     const root = melody.chordRoots[i % melody.chordRoots.length];
-    beepSustain(root, 4*beatSec*1.05, 'sine', 0.032, i*4*beatSec, 'music');
+    beepSustain(root, 4*beatSec*1.05, 'sine', 0.032*gm, i*4*beatSec, 'music');
   }
   musicTimeoutId = setTimeout(scheduleMusicBar, totalBeats*beatSec*1000);
 }
