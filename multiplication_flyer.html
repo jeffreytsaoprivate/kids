@@ -4,7 +4,7 @@
 <link rel="apple-touch-icon" href="multiplication_flyer/icon.png">
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<title>SkyMath Delivery</title>
+<title>SkyMath Delivery — Multiplication Drone Game</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -3413,6 +3413,7 @@ function applyThemeToBuilding(entry, img){
   const wallTex = textures.wall.tex.clone();
   wallTex.repeat.set(Math.max(1,bw/wallTileW), Math.max(1,bh/wallTileH));
   entry.body.material.map = wallTex;
+  entry.body.material.color.set(0xffffff); // clear the placeholder palette tint so it doesn't multiply into the texture
   entry.body.material.needsUpdate = true;
 
   // extra wall-facing surfaces (e.g. the triangular gable-end infill under
