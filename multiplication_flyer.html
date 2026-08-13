@@ -37,10 +37,19 @@
 
   /* ---------- Top HUD ---------- */
   #topHud{
-    position:fixed; top:16px; left:50%; transform:translateX(-50%);
-    display:flex; flex-direction:column; align-items:center; gap:6px;
-    pointer-events:none; z-index:20; width:min(92vw,560px);
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+    z-index: 30; /* Placed in front of scoreBox (z-index: 20) */
+    width: min(92vw, 560px);
   }
+
   #problemCard{
     background:linear-gradient(180deg,#fffdf7,#fff3da);
     border:3px solid var(--card-border);
@@ -91,12 +100,22 @@
   }
 
   /* ---------- Score ---------- */
-  #scoreBox{
-    position:fixed; top:16px; right:16px; z-index:20;
-    background:var(--card); border:3px solid var(--card-border);
-    border-radius:16px; padding:8px 16px; box-shadow:var(--shadow);
-    font-family:'Fredoka',sans-serif; font-weight:700; font-size:18px;
-    display:flex; align-items:center; gap:8px;
+  #scoreBox {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 20; /* Sits behind problemCard on overlap */
+    background: var(--card);
+    border: 3px solid var(--card-border);
+    border-radius: 16px;
+    padding: 8px 16px;
+    box-shadow: var(--shadow);
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   #scoreBox .star{font-size:22px;}
   #streakBadge{
@@ -258,8 +277,10 @@
 
   @media (max-width:640px){
     #actionBtn{ bottom:34px; width:112px; height:112px; }
-    #controlsHint{ display:none; }
+    #controlsHint{ display:none  !important; }
+    #topHud{  transform: translateX(-60%); }
   }
+
 </style>
 </head>
 <body>
@@ -344,7 +365,7 @@
       <div>↩️ <b>A/D</b> or <b>←/→</b> — turn (desktop)</div>
       <div>👆 On touch screens: press anywhere on the <b>left side</b> and drag — up/down flies forward/back, left/right turns</div>
       <div>📦 Fly close to the depot — pickup happens automatically</div>
-      <div>🎯 At a house, press <b>Space</b> or the 📦 button to deliver</div>
+      <div>🏠 At a house, press <b>Space</b> or the 📦 button to deliver</div>
     </div>
     <p style="font-size:13px;color:#6b5f45;">Tip: the pickup building changes every round — and if delivery takes too long, the right house will call! 😄</p>
     <button id="introMuteBtn" class="secondaryBtn">🔊 Sound: On</button>
@@ -589,7 +610,7 @@ const groundGeo = new THREE.PlaneGeometry(WORLD_HALF*2.6, WORLD_HALF*2.6, 90, 90
   }
   groundGeo.computeVertexNormals();
 }
-const groundMat = new THREE.MeshStandardMaterial({map:grassTexture(), roughness:1});
+const groundMat = new THREE.MeshStandardMaterial({color: 0x6fce5e, roughness:1}); //map:grassTexture()
 const ground = new THREE.Mesh(
   groundGeo,
   groundMat
@@ -3338,10 +3359,14 @@ function loadThemeImage(url){
   return new Promise((resolve)=>{
     const img = new Image();
     img.onload = ()=> resolve(img);
-    img.onerror = ()=> resolve(null);
+    img.onerror = ()=>{
+      console.warn(`Texture failed to load: ${url}. Falling back to default colors.`);
+      resolve(null); // Resolve as null so game pipeline continues uninterrupted
+    };
     img.src = url;
   });
 }
+
 function cropBand(img, bandIndex){
   const w = img.width, h = Math.floor(img.height/3);
   const c = document.createElement('canvas');
@@ -3426,16 +3451,27 @@ function applyThemeToBuilding(entry, img){
   entry.group.add(facade);
   entry.facade = facade;
 }
+
+// Safely execute asset loading pipeline with fallback materials
 Promise.all([
   Promise.all(THEME_UNIQUE_FILES.map(loadThemeImage)),
   Promise.all(THEME_REPEAT_FILES.map(loadThemeImage))
 ]).then(([uniqueImgs, repeatImgs])=>{
-  uniqueImgs = uniqueImgs.filter(Boolean);
-  repeatImgs = repeatImgs.filter(Boolean);
-  if(!uniqueImgs.length && !repeatImgs.length) return;
+  const validUnique = uniqueImgs.filter(Boolean);
+  const validRepeat = repeatImgs.filter(Boolean);
+
+  // If textures fail to load, houses remain clean white with their roof accents
+  if(!validUnique.length && !validRepeat.length) {
+    allBuildings.forEach(entry => {
+      if(entry.body) {
+        entry.body.material.color.set(0xffffff);
+        entry.body.material.needsUpdate = true;
+      }
+    });
+    return;
+  }
 
   const allBuildings = [...houses, ...decoys];
-  // shuffle so which specific buildings get the landmark textures varies
   const order = allBuildings.map((_,i)=>i);
   for(let i=order.length-1;i>0;i--){
     const j = Math.floor(Math.random()*(i+1));
@@ -3445,13 +3481,82 @@ Promise.all([
   let repeatCursor = 0;
   order.forEach((buildingIdx, pos)=>{
     const entry = allBuildings[buildingIdx];
-    if(pos < uniqueImgs.length){
-      applyThemeToBuilding(entry, uniqueImgs[pos]);
-    } else if(repeatImgs.length){
-      applyThemeToBuilding(entry, repeatImgs[repeatCursor % repeatImgs.length]);
+    if(pos < validUnique.length){
+      applyThemeToBuilding(entry, validUnique[pos]);
+    } else if(validRepeat.length){
+      applyThemeToBuilding(entry, validRepeat[repeatCursor % validRepeat.length]);
       repeatCursor++;
     }
   });
+}).catch(err => {
+  console.warn("Theme loading encountered an issue; keeping default white houses.", err);
+});
+
+// Load environment map textures with graceful fallback defaults
+Promise.all([
+  loadThemeImage('multiplication_flyer/road.png'),
+  loadThemeImage('multiplication_flyer/intersection.png'),
+  loadThemeImage('multiplication_flyer/grass.png'),
+  loadThemeImage('multiplication_flyer/pond.png')
+]).then(([roadImg, intersectionImg, grassImg, pondImg])=>{
+  
+  // Roads: Use image if loaded, otherwise fallback to dark grey (#55555d)
+  if(roadImg){
+    const tex = new THREE.Texture(roadImg);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1, roadSpan/14);
+    tex.needsUpdate = true;
+    roadMat.map = tex;
+    roadMat.color.set(0xffffff);
+  } else {
+    roadMat.color.set(0x55555d); // Dark grey road fallback
+  }
+  roadMat.needsUpdate = true;
+
+  // Intersections: Use image if loaded, otherwise fallback to matching dark grey
+  if(intersectionImg){
+    const tex = new THREE.Texture(intersectionImg);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+    intersectionMat.map = tex;
+    intersectionMat.color.set(0xffffff);
+  } else {
+    intersectionMat.color.set(0x55555d); // Dark grey intersection fallback
+  }
+  intersectionMat.needsUpdate = true;
+
+  // Grass: Use image if loaded, otherwise fallback to green (#6fce5e)
+  if(grassImg){
+    const mosaic = buildGrassMosaic(grassImg);
+    const tex = new THREE.CanvasTexture(mosaic);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    const groundSize = WORLD_HALF*2.6;
+    const superTileWorldSize = 2.2*4;
+    tex.repeat.set(groundSize/superTileWorldSize, groundSize/superTileWorldSize);
+    tex.needsUpdate = true;
+    groundMat.map = tex;
+  } else {
+    groundMat.color.set(0x6fce5e); // Green grass fallback
+  }
+  groundMat.needsUpdate = true;
+
+  // Ponds: Use image if loaded, otherwise fallback to blue (#6fb7d9)
+  ponds.forEach(pond=>{
+    if(pondImg){
+      const tex = new THREE.Texture(pondImg);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.needsUpdate = true;
+      pond.material.map = tex;
+      pond.material.color.set(0xffffff);
+    } else {
+      pond.material.color.set(0x6fb7d9); // Blue lake fallback
+    }
+    pond.material.needsUpdate = true;
+  });
+}).catch(err => {
+  console.warn("Environment texture loading encountered an issue; using default environment colors.", err);
 });
 
 /* ============================================================
