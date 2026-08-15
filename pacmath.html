@@ -4,7 +4,7 @@
 <link rel="apple-touch-icon" href="pacmath/icon.png">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Pac-Math</title>
+<title>Pac-Math — Munch the Right Answer!</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -81,6 +81,7 @@
   }
   #questionText{
     font-size:19px; font-weight:800; color:#b57200; letter-spacing:.3px;
+    text-align:center;
     background:linear-gradient(180deg,#ffffff,#f1f4fc);
     border:2px solid var(--line); border-radius:12px;
     padding:2px 12px;
@@ -269,7 +270,7 @@
       <button id="gearBtn">⚙️</button>
       <div class="hud-chip" id="livesWrap"></div>
     </div>
-    <div id="questionMid"><div id="questionText">Pac-Math</div></div>
+    <div id="questionMid"><div id="questionText">— × — = ?</div></div>
     <div id="hudRight">
       <div class="hud-chip" id="scoreChip">⭐ <span id="scoreVal">0</span></div>
       <div class="hud-chip" id="streakChip">🔥 <span id="streakVal">0</span></div>
@@ -291,6 +292,7 @@
     <!-- Start overlay -->
     <div class="overlay" id="startOverlay">
       <div class="big-emoji"><svg class="title-pac-icon" viewBox="0 0 32 32"><use href="#pacIcon"/></svg> 👻</div>
+      <h2 class="title-font">Pac-Math</h2>
       <p>Munch dots, dodge ghosts, and solve the problem to find the magic pill!</p>
       <div style="text-align:left; margin-top:4px;">
         <div class="instrRow"><span class="ic">🕹️</span> Arrows / WASD to move</div>
@@ -358,10 +360,36 @@
 (function(){
 "use strict";
 
-const COLS = 17, ROWS = 19, TILE = 26;
-const CELL_W = 8, CELL_H = 9;
+// ---- Screen-size-based grid sizing ----
+// On phone-sized screens, use a smaller maze grid so each tile renders larger
+// on screen (a fixed number of tiles necessarily gets smaller as the screen
+// narrows, so the only way to keep tiles big is to use fewer of them).
+const IS_PHONE_SCREEN = (function(){
+  const smallScreen = Math.min(window.innerWidth, window.innerHeight) <= 500;
+  const iOS = /iPhone|iPod/i.test(navigator.userAgent||'');
+  return smallScreen || iOS;
+})();
+const COLS = IS_PHONE_SCREEN ? 13 : 17;
+const ROWS = IS_PHONE_SCREEN ? 15 : 19;
+const TILE = 26;
+const CELL_W = (COLS-1)/2, CELL_H = (ROWS-1)/2;
+
+// Ghost house: fixed absolute size (needs room for a door + a 5-wide interior
+// so all 4 ghosts have distinct spawn tiles), centered on the grid. Shrinking
+// the overall grid brings the maze in around it — down to a floor where the
+// house would swallow too much of the maze to still look/play like one.
+const centerCol = Math.floor(COLS/2);
+const centerRow = Math.floor(ROWS/2);
+const doorCol = centerCol - 1;
+const HOUSE_HALF_W = 3, HOUSE_HALF_H = 2;
+const houseColStart = centerCol - HOUSE_HALF_W, houseColEnd = centerCol + HOUSE_HALF_W;
+const houseRowStart = centerRow - HOUSE_HALF_H, houseRowEnd = centerRow + HOUSE_HALF_H;
+const TUNNEL_ROW = centerRow;
+
 function cellToGrid(cx,cy){ return [2*cx+1, 2*cy+1]; }
-function inReservedHouse(cx,cy){ return cx>=2 && cx<=5 && cy>=3 && cy<=5; }
+const houseCxStart = (houseColStart-1)/2, houseCxEnd = (houseColEnd-1)/2;
+const houseCyStart = (houseRowStart-1)/2, houseCyEnd = (houseRowEnd-1)/2;
+function inReservedHouse(cx,cy){ return cx>=houseCxStart && cx<=houseCxEnd && cy>=houseCyStart && cy<=houseCyEnd; }
 
 function generateMazeRows(){
   const grid = Array.from({length:ROWS}, ()=>Array(COLS).fill('#'));
@@ -422,24 +450,23 @@ function generateMazeRows(){
     }
   }
 
-  for (let row=7; row<=11; row++){
-    for (let col=5; col<=11; col++){
-      if (row===7 && col===7) grid[row][col]='d';
-      else if (row===11 && col===7) grid[row][col]='d';
-      else if (row>=8 && row<=10 && col>=6 && col<=10) grid[row][col]='h';
+  for (let row=houseRowStart; row<=houseRowEnd; row++){
+    for (let col=houseColStart; col<=houseColEnd; col++){
+      if (row===houseRowStart && col===doorCol) grid[row][col]='d';
+      else if (row===houseRowEnd && col===doorCol) grid[row][col]='d';
+      else if (row>=houseRowStart+1 && row<=houseRowEnd-1 && col>=houseColStart+1 && col<=houseColEnd-1) grid[row][col]='h';
       else grid[row][col]='#';
     }
   }
-  grid[6][7] = '.';
-  grid[12][7] = '.';
+  grid[houseRowStart-1][doorCol] = '.';
+  grid[houseRowEnd+1][doorCol] = '.';
   grid[TUNNEL_ROW][0] = '.';
   grid[TUNNEL_ROW][COLS-1] = '.';
 
-  for (const [c,r] of [[1,1],[15,1],[1,17],[15,17]]) grid[r][c] = 'o';
+  for (const [c,r] of [[1,1],[COLS-2,1],[1,ROWS-2],[COLS-2,ROWS-2]]) grid[r][c] = 'o';
 
   return grid.map(row => row.join(''));
 }
-const TUNNEL_ROW = 9;
 const MAZE_ROWS = generateMazeRows();
 
 const tileChar = [];
@@ -463,7 +490,7 @@ function rawOpenTile(x,y){
 const bridgeCandidates = [];
 for (let y=1;y<ROWS-1;y++) for (let x=1;x<COLS-1;x++){
   if (tileChar[y][x] !== '#') continue;
-  if (x>=4 && x<=12 && y>=6 && y<=12) continue;
+  if (x>=houseColStart-1 && x<=houseColEnd+1 && y>=houseRowStart-1 && y<=houseRowEnd+1) continue;
   const openL = rawOpenTile(x-1,y), openR = rawOpenTile(x+1,y);
   const openU = rawOpenTile(x,y-1), openD = rawOpenTile(x,y+1);
   const openCount = (openL?1:0)+(openR?1:0)+(openU?1:0)+(openD?1:0);
@@ -503,12 +530,12 @@ function wrapPosition(obj){
   if (obj.x < 0) obj.x += span;
 }
 
-const HOUSE_CENTER = {x:8, y:9};
-const HOUSE_DOOR    = {x:7, y:7};
-const PACMAN_START  = {x:7, y:13};
-const GHOST_HOME = [ {x:6,y:9}, {x:7,y:9}, {x:9,y:9}, {x:10,y:9} ];
+const HOUSE_CENTER = {x:centerCol, y:centerRow};
+const HOUSE_DOOR    = {x:doorCol, y:houseRowStart};
+const PACMAN_START  = {x:doorCol, y:houseRowEnd+2};
+const GHOST_HOME = [ {x:centerCol-2,y:centerRow}, {x:centerCol-1,y:centerRow}, {x:centerCol+1,y:centerRow}, {x:centerCol+2,y:centerRow} ];
 const SCATTER_CORNERS = {
-  red:{x:15,y:1}, pink:{x:1,y:1}, cyan:{x:15,y:17}, orange:{x:1,y:17}
+  red:{x:COLS-2,y:1}, pink:{x:1,y:1}, cyan:{x:COLS-2,y:ROWS-2}, orange:{x:1,y:ROWS-2}
 };
 
 /* =========================================================
