@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="apple-touch-icon" href="pacmath/icon.png">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Pac-Math — Munch the Right Answer!</title>
@@ -36,7 +37,7 @@
     display:flex;
     flex-direction:column;
     align-items:center;
-    padding:8px 10px 10px;
+    padding:4px 6px 4px;
   }
   h1.title-font, .title-font{font-family:'Baloo 2', system-ui, sans-serif;}
 
@@ -47,7 +48,7 @@
     display:flex;
     align-items:center;
     justify-content:space-between;
-    padding:4px 2px 6px;
+    padding:2px 2px 3px;
     font-family:'Baloo 2', sans-serif;
     font-weight:700;
     flex-shrink:0;
@@ -57,13 +58,15 @@
     background:linear-gradient(180deg,#ffffff,#edf1fc);
     border:1px solid var(--line);
     border-radius:14px;
-    padding:5px 10px;
-    font-size:15px;
+    padding:4px 9px;
+    font-size:14px;
     box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 2px 4px rgba(110,125,190,.12);
   }
   #streakChip.hot{ animation: pulseHot 0.6s ease infinite; border-color:#ff8c2b;}
   @keyframes pulseHot{ 0%,100%{transform:scale(1);} 50%{transform:scale(1.08);} }
-  #hudLeft{display:flex; gap:6px; align-items:center;}
+  #hudLeft{display:flex; gap:6px; align-items:center; flex-shrink:0;}
+  #hudRight{display:flex; gap:6px; align-items:center; flex-shrink:0;}
+  #questionMid{flex:1; min-width:0; display:flex; justify-content:center; padding:0 6px;}
   #livesWrap{display:flex; gap:4px; align-items:center;}
   .life-icon{ width:17px; height:17px; }
   .life-icon.active{ fill:#ffb703; filter:drop-shadow(0 0 3px rgba(255,183,3,.75)); }
@@ -71,44 +74,40 @@
   #gearBtn{
     background:linear-gradient(180deg,#ffffff,#edf1fc);
     border:1px solid var(--line); color:var(--ink);
-    width:34px;height:34px;border-radius:50%;
-    font-size:16px; display:flex; align-items:center; justify-content:center;
+    width:30px;height:30px;border-radius:50%;
+    font-size:14px; display:flex; align-items:center; justify-content:center;
     box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 2px 4px rgba(110,125,190,.12);
     cursor:pointer;
   }
-
-  /* ---------- Question banner ---------- */
-  #questionBar{
-    width:100%; max-width: var(--board-w);
-    text-align:center;
+  #questionText{
+    font-size:19px; font-weight:800; color:#b57200; letter-spacing:.3px;
     background:linear-gradient(180deg,#ffffff,#f1f4fc);
-    border:2px solid var(--line);
-    border-radius:16px;
-    padding:9px 6px;
-    margin-bottom:6px;
-    font-family:'Baloo 2', sans-serif;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 3px 6px rgba(110,125,190,.12);
-    flex-shrink:0;
+    border:2px solid var(--line); border-radius:12px;
+    padding:2px 12px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 2px 4px rgba(110,125,190,.12);
+    white-space:nowrap;
+    line-height:1.15;
+    max-width:100%;
+    overflow:hidden;
   }
-  #questionText{ font-size:34px; font-weight:800; color:#b57200; letter-spacing:.5px;}
-  #questionHint{ font-size:10.5px; color:var(--sub-ink); margin-top:1px; font-weight:600;}
 
-  /* ---------- Frightened countdown bar ---------- */
+  /* ---------- Frightened countdown bar (floats over the board) ---------- */
   #frightenedBarWrap{
-    width:100%; max-width: var(--board-w);
+    position:absolute; top:8px; left:8px; right:8px;
+    z-index:12;
     display:flex;
     visibility:hidden; opacity:0;
     align-items:center; gap:8px;
-    margin-bottom:6px;
-    flex-shrink:0;
+    pointer-events:none;
     transition: opacity 0.15s;
   }
   #frightenedBarWrap.show{ visibility:visible; opacity:1; }
-  #frightenedBarIcon{ font-size:15px; flex-shrink:0; }
+  #frightenedBarIcon{ font-size:15px; flex-shrink:0; filter:drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
   #frightenedBarTrack{
     flex:1; height:10px; border-radius:6px;
-    background:#dce3f6; border:1px solid var(--line);
+    background:rgba(220,227,246,.85); border:1px solid var(--line);
     overflow:hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,.15);
   }
   #frightenedBarFill{
     height:100%; width:100%;
@@ -141,6 +140,36 @@
     position:absolute; inset:0; pointer-events:none;
     display:flex; align-items:center; justify-content:center;
   }
+
+  /* ---------- Touch joystick (Roblox-style translucent) ---------- */
+  #joystick{
+    position:absolute; top:0; left:0;
+    pointer-events:none;
+    opacity:0;
+    z-index:15;
+    transition: opacity .12s ease;
+  }
+  #joystick.show{ opacity:1; }
+  #joystickBase{
+    position:absolute;
+    width:104px; height:104px;
+    margin-left:-52px; margin-top:-52px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.16);
+    border:2px solid rgba(255,255,255,0.55);
+    box-shadow: 0 0 0 1px rgba(60,75,140,0.08), inset 0 0 14px rgba(255,255,255,0.25);
+    backdrop-filter: blur(1px);
+  }
+  #joystickThumb{
+    position:absolute;
+    width:48px; height:48px;
+    margin-left:-24px; margin-top:-24px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.55);
+    border:2px solid rgba(255,255,255,0.85);
+    box-shadow: 0 2px 8px rgba(40,55,110,0.25), inset 0 0 8px rgba(255,255,255,0.6);
+    transition: transform .03s linear;
+  }
   .toast{
     font-family:'Baloo 2', sans-serif; font-weight:800; font-size:26px;
     padding:6px 16px; border-radius:12px;
@@ -157,7 +186,6 @@
   .toast.good{ background:rgba(255,255,255,0.95); color:#178a4c; border:2px solid #2ec47a; box-shadow: 0 4px 12px rgba(46,196,122,.25);}
   .toast.bad{ background:rgba(255,255,255,0.95); color:#c4254f; border:2px solid #ef476f; box-shadow: 0 4px 12px rgba(239,71,111,.25);}
 
-  footer.credit{ font-size:9.5px; color:var(--sub-ink); padding-top:6px; flex-shrink:0; text-align:center;}
 
   /* ---------- Overlays ---------- */
   .overlay{
@@ -241,25 +269,24 @@
       <button id="gearBtn">⚙️</button>
       <div class="hud-chip" id="livesWrap"></div>
     </div>
-    <div style="display:flex; gap:6px;">
+    <div id="questionMid"><div id="questionText">— × — = ?</div></div>
+    <div id="hudRight">
       <div class="hud-chip" id="scoreChip">⭐ <span id="scoreVal">0</span></div>
       <div class="hud-chip" id="streakChip">🔥 <span id="streakVal">0</span></div>
     </div>
   </div>
 
-  <div id="questionBar">
-    <div id="questionText">— × — = ?</div>
-    <div id="questionHint">Get more time to catch ghosts if you get the pill with the right answer.</div>
-  </div>
-
-  <div id="frightenedBarWrap">
-    <span id="frightenedBarIcon">👻</span>
-    <div id="frightenedBarTrack"><div id="frightenedBarFill"></div></div>
-  </div>
-
   <div id="boardWrap">
     <canvas id="board"></canvas>
     <div id="fxLayer"></div>
+    <div id="frightenedBarWrap">
+      <span id="frightenedBarIcon">👻</span>
+      <div id="frightenedBarTrack"><div id="frightenedBarFill"></div></div>
+    </div>
+    <div id="joystick">
+      <div id="joystickBase"></div>
+      <div id="joystickThumb"></div>
+    </div>
 
     <!-- Start overlay -->
     <div class="overlay" id="startOverlay">
@@ -314,7 +341,7 @@
       <div class="settingGroup">
         <h3>🔊 Sound</h3>
         <div class="toggleRow" id="soundToggle">
-          <span>Music &amp; SFX</span>
+          <span>Sound effects</span>
           <div class="switch on" id="soundSwitch"></div>
         </div>
       </div>
@@ -326,7 +353,6 @@
     </div>
   </div>
 
-  <footer class="credit">Pac-Math</footer>
 </div>
 
 <script>
@@ -496,6 +522,20 @@ const streakVal = document.getElementById('streakVal');
 const streakChip = document.getElementById('streakChip');
 const livesWrap = document.getElementById('livesWrap');
 const questionText = document.getElementById('questionText');
+const questionMid = document.getElementById('questionMid');
+const QUESTION_MAX_FONT = 38; // 2x the original 19px baseline
+const QUESTION_MIN_FONT = 14;
+const _qMeasureCtx = document.createElement('canvas').getContext('2d');
+function fitQuestionFont(){
+  const text = questionText.textContent;
+  const available = questionMid.clientWidth - 28; // minus questionText's own padding+border
+  if (available <= 0 || !text) return;
+  _qMeasureCtx.font = `800 100px 'Baloo 2', sans-serif`;
+  const widthAt100 = _qMeasureCtx.measureText(text).width || 1;
+  let size = (available / widthAt100) * 100;
+  size = Math.max(QUESTION_MIN_FONT, Math.min(QUESTION_MAX_FONT, size));
+  questionText.style.fontSize = size + 'px';
+}
 const frightenedBarWrap = document.getElementById('frightenedBarWrap');
 const frightenedBarFill = document.getElementById('frightenedBarFill');
 const startOverlay = document.getElementById('startOverlay');
@@ -505,22 +545,40 @@ const settingsPanel = document.getElementById('settingsPanel');
 let highScore = 0;
 let settings = { op:'mul', num:'all', sound:true };
 
+/* ---------- Cookie-based persistence (survives across sessions) ---------- */
+function setCookie(name, value, days){
+  try{
+    const maxAge = days*24*60*60;
+    document.cookie = `${name}=${encodeURIComponent(value)};max-age=${maxAge};path=/;SameSite=Lax`;
+  }catch(e){}
+}
+function getCookie(name){
+  try{
+    const parts = document.cookie.split(';');
+    for (let p of parts){
+      p = p.trim();
+      if (p.startsWith(name+'=')) return decodeURIComponent(p.slice(name.length+1));
+    }
+  }catch(e){}
+  return null;
+}
+
 async function loadStorage(){
   try{
-    const hs = await window.storage.get('pacmath-highscore', false);
-    if (hs && hs.value) highScore = parseInt(hs.value,10) || 0;
+    const hs = getCookie('pacmath-highscore');
+    if (hs) highScore = parseInt(hs,10) || 0;
   }catch(e){}
   try{
-    const s = await window.storage.get('pacmath-settings', false);
-    if (s && s.value) settings = Object.assign(settings, JSON.parse(s.value));
+    const s = getCookie('pacmath-settings');
+    if (s) settings = Object.assign(settings, JSON.parse(s));
   }catch(e){}
   applySettingsToUI();
 }
 async function saveHighScore(){
-  try{ await window.storage.set('pacmath-highscore', String(highScore), false); }catch(e){}
+  setCookie('pacmath-highscore', String(highScore), 365);
 }
 async function saveSettings(){
-  try{ await window.storage.set('pacmath-settings', JSON.stringify(settings), false); }catch(e){}
+  setCookie('pacmath-settings', JSON.stringify(settings), 365);
 }
 
 /* =========================================================
@@ -711,34 +769,23 @@ function genQuestion(){
   const allMode = settings.num === 'all';
   let a,b,answer,symbol;
   if (op==='mul'){
-    a = pickFocusA(); b = allMode ? randInt(2,9) : randInt(1,12);
+    a = pickFocusA(); b = randInt(2,9);
     if (Math.random()<0.5 && !allMode){ const t=a; a=b; b=t; }
     answer = a*b; symbol='×';
   } else if (op==='add'){
-    a = pickFocusA(); b = allMode ? randInt(2,9) : randInt(1,20);
+    a = pickFocusA(); b = randInt(2,9);
     if (Math.random()<0.5 && !allMode){ const t=a; a=b; b=t; }
     answer = a+b; symbol='+';
   } else if (op==='sub'){
-    a = pickFocusA();
-    if (allMode){
-      b = randInt(2,9);
-      let x = Math.max(a,b), y = Math.min(a,b);
-      a=x; b=y; answer = a-b; symbol='−';
-    } else {
-      let hi = Math.max(a,4);
-      b = randInt(0, hi);
-      let x = Math.max(a,b), y = Math.min(a,b);
-      if (Math.random()<0.5){ x = a + randInt(0,10); y = a; }
-      a=x; b=y; answer = a-b; symbol='−';
-    }
+    b = pickFocusA(); answer = randInt(2,9);   
+    a=b+answer; symbol='−';
   } else {
-    b = allMode ? randInt(2,9) : parseInt(settings.num,10);
-    if (b===0) b=2;
-    const q = allMode ? randInt(2,9) : randInt(1,12);
-    a = b*q; answer = q; symbol='÷';
+    b = pickFocusA(); answer = randInt(2,9);
+    a = b*answer; symbol='÷';
   }
   question = { text: `${a} ${symbol} ${b} = ?`, answer };
   questionText.textContent = question.text;
+  fitQuestionFont();
 
   const nums = new Set([answer]);
   let guard = 0;
@@ -799,6 +846,7 @@ function advanceQuestion(){
     const chosen = remaining[randInt(0, remaining.length-1)];
     question = buildQuestionForAnswer(chosen.number);
     questionText.textContent = question.text;
+    fitQuestionFont();
     pillSpots.forEach(s=>{ s.correct = (s === chosen); });
   }, 280);
 }
@@ -828,21 +876,54 @@ window.addEventListener('keydown', (e)=>{
 });
 
 let touchStart = null;
+const joystickEl = document.getElementById('joystick');
+const joystickThumb = document.getElementById('joystickThumb');
+const JOY_MAX_RADIUS = 46;
+
+function showJoystick(x,y){
+  const wrapRect = document.getElementById('boardWrap').getBoundingClientRect();
+  joystickEl.style.left = (x - wrapRect.left) + 'px';
+  joystickEl.style.top = (y - wrapRect.top) + 'px';
+  joystickThumb.style.transform = 'translate(0px,0px)';
+  joystickEl.classList.add('show');
+}
+function moveJoystickThumb(dx,dy){
+  const dist = Math.hypot(dx,dy);
+  const clamped = Math.min(dist, JOY_MAX_RADIUS);
+  const ang = Math.atan2(dy,dx);
+  const tx = Math.cos(ang)*clamped, ty = Math.sin(ang)*clamped;
+  joystickThumb.style.transform = `translate(${tx}px,${ty}px)`;
+}
+function hideJoystick(){
+  joystickEl.classList.remove('show');
+}
+
 canvas.addEventListener('touchstart', (e)=>{
   const t = e.changedTouches[0];
   touchStart = {x:t.clientX, y:t.clientY};
+  showJoystick(t.clientX, t.clientY);
 }, {passive:true});
 canvas.addEventListener('touchmove', (e)=>{
   if (!touchStart) return;
   const t = e.changedTouches[0];
   const dx = t.clientX - touchStart.x;
   const dy = t.clientY - touchStart.y;
+  moveJoystickThumb(dx,dy);
   const adx = Math.abs(dx), ady = Math.abs(dy);
   if (Math.max(adx,ady) > 16){
     if (adx > ady) setNextDir(dx>0?'right':'left');
     else setNextDir(dy>0?'down':'up');
     touchStart = {x:t.clientX, y:t.clientY};
+    showJoystick(t.clientX, t.clientY);
   }
+}, {passive:true});
+canvas.addEventListener('touchend', ()=>{
+  touchStart = null;
+  hideJoystick();
+}, {passive:true});
+canvas.addEventListener('touchcancel', ()=>{
+  touchStart = null;
+  hideJoystick();
 }, {passive:true});
 
 function tileOf(px,py){ return { x: Math.floor(px/TILE), y: Math.floor(py/TILE) }; }
@@ -1262,11 +1343,28 @@ function isOpenTile(x,y){
   return c==='.' || c==='o' || c===' ' || c==='b';
 }
 
+let pathCanvasCtx = null, pathTexture = null;
+const PATH_PX = 32;
+// Slim border around the maze — just enough to seat the tunnel portal arrows,
+// not a wide decorative grass frame (keeps more of the screen for the maze itself).
+const BOARD_BORDER_UNITS = 0.25;
+const PATH_MARGIN = (BOARD_BORDER_UNITS/2) * PATH_PX;
+
+function drawPathTileGrass(x,y){
+  const c2 = pathCanvasCtx;
+  const px = PATH_MARGIN+x*PATH_PX, py = PATH_MARGIN+y*PATH_PX;
+  c2.fillStyle = '#368a28';
+  c2.fillRect(px, py, PATH_PX, PATH_PX);
+  c2.fillStyle = 'rgba(32, 90, 22, 0.35)';
+  for (let s=0;s<4;s++) c2.fillRect(px+Math.random()*PATH_PX, py+Math.random()*PATH_PX, 2, 4);
+}
+
 function buildPathTexture(){
-  const PX = 32, margin = PX;
-  const w = (COLS+2)*PX, h = (ROWS+2)*PX;
+  const PX = PATH_PX, margin = PATH_MARGIN;
+  const w = COLS*PX + 2*margin, h = ROWS*PX + 2*margin;
   const cnv = document.createElement('canvas'); cnv.width=w; cnv.height=h;
   const c2 = cnv.getContext('2d');
+  pathCanvasCtx = c2;
   
   c2.fillStyle = '#368a28';
   c2.fillRect(0,0,w,h);
@@ -1295,11 +1393,15 @@ function buildPathTexture(){
       c2.beginPath(); c2.arc(sx,sy,1.5,0,Math.PI*2); c2.fill();
     }
   }
-  return new THREE.CanvasTexture(cnv);
+  // bridge tiles are painted as solid grass so they read as blocked ground —
+  // this stays permanently, even once the bridge lowers and becomes passable
+  bridgeCells.forEach(b=> drawPathTileGrass(b.x,b.y));
+  pathTexture = new THREE.CanvasTexture(cnv);
+  return pathTexture;
 }
 
-const dioramaW = COLS + 2.0; // 1.6;
-const dioramaH = ROWS + 2.0; // 1.6;
+const dioramaW = COLS + BOARD_BORDER_UNITS;
+const dioramaH = ROWS + BOARD_BORDER_UNITS;
 const dioramaDepth = 0.55;
 
 const topMat = new THREE.MeshStandardMaterial({map: buildPathTexture(), color:0xffffff, roughness:0.85, metalness:0.02});
@@ -1725,6 +1827,7 @@ bridgeCells.forEach(b=>{
   group.position.set(b.x-COLS/2+0.5, 0, b.y-ROWS/2+0.5);
   scene.add(group);
   bridges.push({
+    x: b.x, y: b.y,
     state: bridgeStateByKey[b.x+','+b.y], hinge: group.userData.bridgeHinge,
     phase: 'raised', timer: 4+Math.random()*5,
   });
@@ -2199,15 +2302,14 @@ function fitBoard(){
   const wrap = document.getElementById('boardWrap');
   const app = document.getElementById('app');
   const hud = document.getElementById('hud');
-  const qbar = document.getElementById('questionBar');
-  const footer = document.querySelector('footer.credit');
   const availW = app.clientWidth;
-  const chromeH = hud.offsetHeight + qbar.offsetHeight + footer.offsetHeight + 28;
-  const availH = window.innerHeight - chromeH;
   const w = Math.max(Math.min(availW, 900), 240);
+  document.documentElement.style.setProperty('--board-w', w+'px');
+  fitQuestionFont();
+  const chromeH = hud.offsetHeight + 8;
+  const availH = window.innerHeight - chromeH;
   wrap.style.width = w + 'px';
   wrap.style.height = Math.max(availH, 240) + 'px';
-  document.documentElement.style.setProperty('--board-w', w+'px');
   resizeRendererAndCamera();
 }
 window.addEventListener('resize', fitBoard);
@@ -2223,7 +2325,7 @@ function resizeRendererAndCamera(){
   renderer.setSize(w,h,false);
   const aspect = w/h;
   const elRad = THREE.MathUtils.degToRad(ELEVATION_DEG);
-  const MARGIN = 1.12;
+  const MARGIN = 1.03;
   const neededForRows = (ROWS*Math.sin(elRad)*MARGIN)/2;
   const neededForCols = (COLS*MARGIN)/(2*aspect);
   const viewSize = Math.max(neededForRows, neededForCols);
