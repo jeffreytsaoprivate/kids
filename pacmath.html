@@ -4,7 +4,7 @@
 <link rel="apple-touch-icon" href="pacmath/icon.png">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Pac-Math — Munch the Right Answer!</title>
+<title>Pac-Math</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -269,7 +269,7 @@
       <button id="gearBtn">⚙️</button>
       <div class="hud-chip" id="livesWrap"></div>
     </div>
-    <div id="questionMid"><div id="questionText">— × — = ?</div></div>
+    <div id="questionMid"><div id="questionText">Pac-Math</div></div>
     <div id="hudRight">
       <div class="hud-chip" id="scoreChip">⭐ <span id="scoreVal">0</span></div>
       <div class="hud-chip" id="streakChip">🔥 <span id="streakVal">0</span></div>
@@ -291,7 +291,6 @@
     <!-- Start overlay -->
     <div class="overlay" id="startOverlay">
       <div class="big-emoji"><svg class="title-pac-icon" viewBox="0 0 32 32"><use href="#pacIcon"/></svg> 👻</div>
-      <h2 class="title-font">Pac-Math</h2>
       <p>Munch dots, dodge ghosts, and solve the problem to find the magic pill!</p>
       <div style="text-align:left; margin-top:4px;">
         <div class="instrRow"><span class="ic">🕹️</span> Arrows / WASD to move</div>
@@ -2428,7 +2427,7 @@ closeSettings.addEventListener('click', ()=>{ settingsPanel.classList.remove('op
 
 const opChips = document.getElementById('opChips');
 opChips.querySelectorAll('.chip').forEach(chip=>{
-  chip.addEventListener('click', ()=>{ settings.op = chip.dataset.op; applySettingsToUI(); saveSettings(); });
+  chip.addEventListener('click', ()=>{ settings.op = chip.dataset.op; applySettingsToUI(); saveSettings(); if (state!=='start') genQuestion(); });
 });
 const numChips = document.getElementById('numChips');
 for (let n=2;n<=9;n++){
@@ -2437,7 +2436,7 @@ for (let n=2;n<=9;n++){
   numChips.appendChild(b);
 }
 numChips.querySelectorAll('.chip').forEach(chip=>{
-  chip.addEventListener('click', ()=>{ settings.num = chip.dataset.num; applySettingsToUI(); saveSettings(); });
+  chip.addEventListener('click', ()=>{ settings.num = chip.dataset.num; applySettingsToUI(); saveSettings(); if (state!=='start') genQuestion(); });
 });
 document.getElementById('soundToggle').addEventListener('click', ()=>{
   settings.sound = !settings.sound;
