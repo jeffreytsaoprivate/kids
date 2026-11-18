@@ -10,12 +10,13 @@
 // Paste the firebaseConfig object from lib/firebase.js over this one.
 // =====================================================================
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyA9k81iD2mzPuLKBl76d6sdcLWvguDBzcs",
-  authDomain: "kids-15b5a.firebaseapp.com",
-  projectId: "kids-15b5a",
-  storageBucket: "kids-15b5a.firebasestorage.app",
-  messagingSenderId: "350263998718",
-  appId: "1:350263998718:web:8c1d356caa2df0da99cdaf",
+      apiKey: "AIzaSyBneeyGlDn5csKxfxEW1rufZ6-d8mBF2ow",
+      authDomain: "public-4b925.firebaseapp.com",
+      projectId: "public-4b925",
+      storageBucket: "public-4b925.firebasestorage.app",
+      messagingSenderId: "204296915157",
+      appId: "1:204296915157:web:1ba42818704e3bcaa9ba5c",
+      measurementId: "G-E85CLC0M3W"
 };
 const COLLECTION_NAME = "foods";
 const FB_VERSION = "10.14.1";
